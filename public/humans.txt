@@ -1,0 +1,10 @@
+/* TEAM */
+Developer: Breno Alvim
+GitHub: https://github.com/obrenoalvim
+
+/* SITE */
+Name: Clash of Clans Tracker
+Repository: https://github.com/obrenoalvim/clash-cards-tracker
+Language: English (interface), Portuguese (commit history)
+Stack: React, TypeScript, Vite, Tailwind CSS
+Note: Fan-made tool. Not affiliated with Supercell.

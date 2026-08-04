@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# AI crawlers — this is a fan-made utility, not gated content
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
