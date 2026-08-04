@@ -20,12 +20,9 @@ import {
   Filter,
   ChevronDown,
   Eye,
-  EyeOff,
   Lock,
   Copy,
   CheckCheck,
-  Coins,
-  Swords,
   Hammer,
   Zap,
   ExternalLink,
@@ -71,7 +68,6 @@ export default function App() {
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [showShare, setShowShare] = useState(false);
-  const [showMissingOnly, setShowMissingOnly] = useState(false);
   const [copied, setCopied] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
@@ -175,25 +171,18 @@ export default function App() {
     <div className="min-h-screen bg-[#0a0a12] text-white relative overflow-hidden">
       {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-pink-600/10 rounded-full blur-[120px]" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-cyan-600/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-1/3 w-[500px] h-[500px] bg-amber-600/10 rounded-full blur-[120px]" />
+        <div className="absolute top-0 left-1/3 w-[600px] h-[600px] bg-amber-600/[0.06] rounded-full blur-[140px]" />
       </div>
 
       {/* Header */}
       <header className="relative z-10 border-b border-white/5 bg-[#0a0a12]/80 backdrop-blur-md sticky top-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 via-pink-500 to-cyan-500 flex items-center justify-center text-2xl shadow-lg shadow-pink-500/20">
-                🃏
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-amber-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
-                  Clash of Cards Tracker
-                </h1>
-                <p className="text-xs text-white/50">August 2026 Clashiversary Event</p>
-              </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                Clash of Clans Tracker
+              </h1>
+              <p className="text-xs text-white/50">August 2026 Clashiversary Event</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -237,7 +226,7 @@ export default function App() {
               />
               <button
                 onClick={copyShareLink}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-pink-500/20 hover:bg-pink-500/30 text-pink-300 text-sm font-semibold shrink-0"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-sm font-semibold shrink-0"
               >
                 {copied ? <CheckCheck className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 {copied ? "Copied!" : "Copy"}
@@ -353,7 +342,7 @@ export default function App() {
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-black bg-gradient-to-r from-amber-400 to-pink-400 bg-clip-text text-transparent">
+                <div className="text-3xl font-black text-amber-400">
                   {Math.round((stats.collected / stats.total) * 100)}%
                 </div>
                 {stats.duplicates > 0 && (
@@ -365,7 +354,7 @@ export default function App() {
             {/* Progress bar */}
             <div className="relative h-4 rounded-full bg-white/5 overflow-hidden mb-6">
               <div
-                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-500 via-pink-500 to-cyan-500 transition-all duration-700 ease-out"
+                className="absolute inset-y-0 left-0 rounded-full bg-amber-500 transition-all duration-700 ease-out"
                 style={{ width: `${(stats.collected / stats.total) * 100}%` }}
               />
               {REWARDS.map((r) => (
@@ -464,7 +453,7 @@ export default function App() {
       <footer className="relative z-10 border-t border-white/5 mt-12">
         <div className="max-w-7xl mx-auto px-6 py-6 text-center">
           <p className="text-sm text-white/40">
-            Clash of Cards Tracker — Fan-made tool for the August 2026 Clashiversary Event
+            Clash of Clans Tracker — Fan-made tool for the August 2026 Clashiversary Event
           </p>
           <p className="text-xs text-white/30 mt-1">
             Card images from the{" "}
