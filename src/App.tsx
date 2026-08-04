@@ -20,9 +20,12 @@ import {
   Filter,
   ChevronDown,
   Eye,
+  EyeOff,
   Lock,
   Copy,
   CheckCheck,
+  Coins,
+  Swords,
   Hammer,
   Zap,
   ExternalLink,
@@ -68,6 +71,7 @@ export default function App() {
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [showShare, setShowShare] = useState(false);
+  const [showMissingOnly, setShowMissingOnly] = useState(false);
   const [copied, setCopied] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
@@ -168,37 +172,27 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 relative overflow-hidden">
-      {/* Background atmosphere: torchlight + stone grain */}
+    <div className="min-h-screen bg-[#0a0a12] text-white relative overflow-hidden">
+      {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#241a10,transparent_60%)]" />
-        <div className="absolute top-0 left-[10%] w-[500px] h-[500px] bg-ember-600/10 rounded-full blur-[140px]" />
-        <div className="absolute top-1/4 right-[8%] w-[450px] h-[450px] bg-gold-600/10 rounded-full blur-[140px]" />
-        <div className="absolute bottom-0 left-1/3 w-[500px] h-[500px] bg-ember-600/5 rounded-full blur-[140px]" />
-        <div className="absolute inset-0 bg-grain opacity-[0.05]" />
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-pink-600/10 rounded-full blur-[120px]" />
+        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-cyan-600/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 left-1/3 w-[500px] h-[500px] bg-amber-600/10 rounded-full blur-[120px]" />
       </div>
 
       {/* Header */}
-      <header className="relative z-10 border-b border-gold-600/20 bg-gradient-to-b from-stone-900 to-stone-950/95 backdrop-blur-md sticky top-0 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+      <header className="relative z-10 border-b border-white/5 bg-[#0a0a12]/80 backdrop-blur-md sticky top-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
-              <CrestIcon className="w-11 h-11 shrink-0" />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 via-pink-500 to-cyan-500 flex items-center justify-center text-2xl shadow-lg shadow-pink-500/20">
+                🃏
+              </div>
               <div>
-                <h1
-                  className="font-display text-lg sm:text-2xl uppercase tracking-wide leading-tight"
-                  style={{
-                    background: "linear-gradient(135deg, #f0d98c, #d4af37 45%, #ff6a3d)",
-                    WebkitBackgroundClip: "text",
-                    backgroundClip: "text",
-                    color: "transparent",
-                  }}
-                >
-                  Clash of Clans Tracker
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-amber-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
+                  Clash of Cards Tracker
                 </h1>
-                <p className="text-[11px] text-stone-400 font-semibold tracking-[0.15em] uppercase mt-0.5">
-                  Clashiversary Event &middot; August 2026
-                </p>
+                <p className="text-xs text-white/50">August 2026 Clashiversary Event</p>
               </div>
             </div>
 
@@ -206,7 +200,7 @@ export default function App() {
               {isSharedView ? (
                 <a
                   href={window.location.pathname}
-                  className="flex items-center gap-2 px-4 py-2 rounded-md border border-gold-600/30 bg-stone-800/60 hover:bg-stone-800 transition text-sm font-semibold text-gold-300"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm font-semibold"
                 >
                   <Eye className="w-4 h-4" />
                   My Collection
@@ -215,14 +209,14 @@ export default function App() {
                 <>
                   <button
                     onClick={() => setShowShare(!showShare)}
-                    className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-md border border-gold-600/30 bg-stone-800/60 hover:bg-stone-800 transition text-sm font-semibold text-gold-300"
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm font-semibold"
                   >
                     <Share2 className="w-4 h-4" />
                     <span className="hidden sm:inline">Share</span>
                   </button>
                   <button
                     onClick={resetCollection}
-                    className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-md border border-ember-600/30 bg-ember-950/20 hover:bg-ember-600/10 text-ember-400 transition text-sm font-semibold"
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition text-sm font-semibold"
                   >
                     <RotateCcw className="w-4 h-4" />
                     <span className="hidden sm:inline">Reset</span>
@@ -234,16 +228,16 @@ export default function App() {
 
           {/* Share bar */}
           {showShare && !isSharedView && (
-            <div className="mt-4 flex items-center gap-2 p-3 rounded-md bg-stone-900 border border-gold-600/20">
-              <LinkIcon className="w-4 h-4 text-gold-500/60 shrink-0" />
+            <div className="mt-4 flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/10">
+              <LinkIcon className="w-4 h-4 text-white/40 shrink-0" />
               <input
                 readOnly
                 value={shareUrl}
-                className="flex-1 bg-transparent text-sm text-stone-300 outline-none min-w-0"
+                className="flex-1 bg-transparent text-sm text-white/70 outline-none min-w-0"
               />
               <button
                 onClick={copyShareLink}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gold-600/15 hover:bg-gold-600/25 text-gold-300 text-sm font-semibold shrink-0"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-pink-500/20 hover:bg-pink-500/30 text-pink-300 text-sm font-semibold shrink-0"
               >
                 {copied ? <CheckCheck className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 {copied ? "Copied!" : "Copy"}
@@ -252,9 +246,9 @@ export default function App() {
           )}
 
           {isSharedView && (
-            <div className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-md bg-gold-600/10 border border-gold-600/20">
-              <Eye className="w-4 h-4 text-gold-400" />
-              <p className="text-sm text-gold-200">
+            <div className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+              <Eye className="w-4 h-4 text-cyan-400" />
+              <p className="text-sm text-cyan-300">
                 Viewing a shared collection. Items are filtered to show collected only.
               </p>
             </div>
@@ -268,25 +262,25 @@ export default function App() {
         <section className="mb-6 space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gold-600/50" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
               <input
                 type="text"
                 placeholder="Search cards..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-md bg-stone-900 border border-stone-700 text-sm placeholder:text-stone-500 focus:outline-none focus:border-gold-500/60 transition shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"
+                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-sm placeholder:text-white/30 focus:outline-none focus:border-white/30 transition"
               />
             </div>
 
-            <div className="flex gap-1 p-1 rounded-md bg-stone-900 border border-stone-700 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
+            <div className="flex gap-2">
               {(["all", "collected", "missing"] as FilterMode[]).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setFilterMode(mode)}
-                  className={`px-3 sm:px-4 py-1.5 rounded text-sm font-semibold transition capitalize ${
+                  className={`px-3 sm:px-4 py-2.5 rounded-lg text-sm font-semibold transition capitalize ${
                     filterMode === mode
-                      ? "bg-gold-600/20 text-gold-300 shadow-[0_0_0_1px_rgba(212,175,55,0.3)]"
-                      : "text-stone-400 hover:text-stone-200"
+                      ? "bg-white/15 text-white"
+                      : "bg-white/5 text-white/50 hover:bg-white/10"
                   }`}
                 >
                   {mode}
@@ -299,26 +293,21 @@ export default function App() {
           <div className="flex gap-2 overflow-x-auto pb-1">
             <button
               onClick={() => setCategoryFilter("all")}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition border ${
-                categoryFilter === "all"
-                  ? "bg-gold-600/15 text-gold-300 border-gold-500/40"
-                  : "bg-stone-900 text-stone-400 border-stone-700 hover:border-stone-600"
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
+                categoryFilter === "all" ? "bg-white/15 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"
               }`}
             >
               All Cards
             </button>
             {(Object.keys(CATEGORY_META) as CardCategory[]).map((cat) => {
               const meta = CATEGORY_META[cat];
-              const active = categoryFilter === cat;
               return (
                 <button
                   key={cat}
                   onClick={() => setCategoryFilter(cat)}
-                  className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 border bg-stone-900"
-                  style={{
-                    borderColor: active ? meta.color : "#332415",
-                    color: active ? meta.color : "#a8a29e",
-                  }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
+                    categoryFilter === cat ? "bg-white/15 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"
+                  }`}
                 >
                   <span style={{ color: meta.color }}>{categoryIcons[cat]}</span>
                   {meta.short}
@@ -331,7 +320,7 @@ export default function App() {
         {/* Card grid */}
         <section>
           {filteredCards.length === 0 ? (
-            <div className="text-center py-20 text-stone-500">
+            <div className="text-center py-20 text-white/40">
               <Filter className="w-12 h-12 mx-auto mb-4 opacity-30" />
               <p>No cards match your filters.</p>
             </div>
@@ -355,50 +344,34 @@ export default function App() {
 
         {/* Overall progress */}
         <section className="mt-8 mb-8">
-          <div className="rounded-xl bg-gradient-to-br from-stone-900 to-stone-950 border border-gold-600/20 p-6 sm:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
+          <div className="rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 p-6 sm:p-8">
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
               <div>
-                <h2 className="font-title text-lg font-bold text-stone-100 tracking-wide">Collection Progress</h2>
-                <p className="text-sm text-stone-400 mt-0.5">
+                <h2 className="text-lg font-bold text-white/90">Collection Progress</h2>
+                <p className="text-sm text-white/50 mt-0.5">
                   {stats.collected} of {stats.total} unique cards collected
                 </p>
               </div>
               <div className="text-right">
-                <div
-                  className="font-display text-3xl"
-                  style={{
-                    background: "linear-gradient(135deg, #f0d98c, #d4af37, #ff6a3d)",
-                    WebkitBackgroundClip: "text",
-                    backgroundClip: "text",
-                    color: "transparent",
-                  }}
-                >
+                <div className="text-3xl font-black bg-gradient-to-r from-amber-400 to-pink-400 bg-clip-text text-transparent">
                   {Math.round((stats.collected / stats.total) * 100)}%
                 </div>
                 {stats.duplicates > 0 && (
-                  <p className="text-xs text-stone-500 mt-0.5">{stats.duplicates} duplicates for trading</p>
+                  <p className="text-xs text-white/40 mt-0.5">{stats.duplicates} duplicates for trading</p>
                 )}
               </div>
             </div>
 
             {/* Progress bar */}
-            <div
-              className="relative h-4 rounded-full overflow-hidden mb-6"
-              style={{ background: "#0d0904", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.8)" }}
-            >
+            <div className="relative h-4 rounded-full bg-white/5 overflow-hidden mb-6">
               <div
-                className="absolute inset-y-0 left-0 rounded-full overflow-hidden transition-all duration-700 ease-out"
-                style={{
-                  width: `${(stats.collected / stats.total) * 100}%`,
-                  background: "linear-gradient(90deg, #b8912a, #e8c46a, #ff6a3d)",
-                }}
-              >
-                <div className="absolute inset-y-0 w-1/3 bg-white/30 -skew-x-12 animate-shimmer" />
-              </div>
+                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-500 via-pink-500 to-cyan-500 transition-all duration-700 ease-out"
+                style={{ width: `${(stats.collected / stats.total) * 100}%` }}
+              />
               {REWARDS.map((r) => (
                 <div
                   key={r.count}
-                  className="absolute top-0 bottom-0 w-0.5 bg-stone-950/60"
+                  className="absolute top-0 bottom-0 w-0.5 bg-white/30"
                   style={{ left: `${(r.count / stats.total) * 100}%` }}
                   title={`${r.count} cards: ${r.name}`}
                 />
@@ -415,8 +388,11 @@ export default function App() {
                 return (
                   <div
                     key={cat}
-                    className="rounded-lg p-4 border transition cursor-pointer bg-stone-900/60 hover:bg-stone-900"
-                    style={{ borderColor: categoryFilter === cat ? meta.color : "#332415" }}
+                    className={`rounded-xl p-4 border transition cursor-pointer ${
+                      categoryFilter === cat
+                        ? "border-white/30 bg-white/10"
+                        : "border-white/5 bg-white/[0.03] hover:bg-white/[0.06]"
+                    }`}
                     onClick={() => setCategoryFilter(categoryFilter === cat ? "all" : cat)}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -424,23 +400,23 @@ export default function App() {
                         {categoryIcons[cat]}
                         {meta.short}
                       </span>
-                      {complete && <Check className="w-4 h-4 text-gold-400" />}
+                      {complete && <Check className="w-4 h-4 text-green-400" />}
                     </div>
                     <div className="flex items-baseline justify-between mb-2">
-                      <span className="text-2xl font-black text-stone-100">
+                      <span className="text-2xl font-black">
                         {s.collected}
-                        <span className="text-sm text-stone-500 font-normal">/{s.total}</span>
+                        <span className="text-sm text-white/40 font-normal">/{s.total}</span>
                       </span>
-                      <span className="text-xs text-stone-500">{pct}%</span>
+                      <span className="text-xs text-white/40">{pct}%</span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-stone-950 overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-700"
                         style={{ width: `${pct}%`, backgroundColor: meta.color }}
                       />
                     </div>
                     {complete && (
-                      <p className="text-xs text-gold-400 mt-2 flex items-center gap-1">
+                      <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
                         <Trophy className="w-3 h-3" /> {SET_REWARDS[cat].emoji} {SET_REWARDS[cat].name}
                       </p>
                     )}
@@ -453,61 +429,50 @@ export default function App() {
 
         {/* Rewards tracker */}
         <section className="mb-8">
-          <div className="rounded-xl bg-gradient-to-br from-stone-900 to-stone-950 border border-gold-600/20 p-6 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
-            <h3 className="font-title text-sm font-bold text-gold-400 mb-5 flex items-center gap-2 tracking-wide uppercase">
+          <div className="rounded-2xl bg-gradient-to-br from-amber-500/[0.08] to-transparent border border-amber-500/20 p-6">
+            <h3 className="text-sm font-bold text-amber-400 mb-4 flex items-center gap-2">
               <Sparkles className="w-4 h-4" /> Milestone Rewards
             </h3>
-            <div className="relative">
-              <div className="absolute left-4 right-4 top-7 h-0.5 bg-gradient-to-r from-stone-700 via-gold-600/30 to-stone-700" />
-              <div className="relative grid grid-cols-3 sm:grid-cols-6 gap-3">
-                {REWARDS.map((r) => {
-                  const earned = stats.collected >= r.count;
-                  const isNext = nextReward?.count === r.count;
-                  return (
-                    <div key={r.count} className="flex flex-col items-center text-center">
-                      <div
-                        className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl border-2 transition ${
-                          isNext ? "animate-ember-pulse" : ""
-                        }`}
-                        style={{
-                          background: earned
-                            ? "radial-gradient(circle, #3a2a12, #1a130c)"
-                            : "radial-gradient(circle, #150f09, #120d08)",
-                          borderColor: earned ? "#e8c46a" : isNext ? "#ff6a3d" : "#332415",
-                          boxShadow: earned
-                            ? "0 0 16px rgba(232,196,106,0.45)"
-                            : isNext
-                            ? "0 0 12px rgba(255,106,61,0.4)"
-                            : "none",
-                        }}
-                      >
-                        {r.emoji}
-                      </div>
-                      <div className="text-xs font-bold text-gold-300 mt-1.5">{r.count}</div>
-                      <div className="text-[10px] text-stone-500 leading-tight mt-0.5 max-w-[76px]">{r.name}</div>
-                      {earned && <Check className="w-3 h-3 text-gold-400 mt-1" />}
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              {REWARDS.map((r) => {
+                const earned = stats.collected >= r.count;
+                const isNext = nextReward?.count === r.count;
+                return (
+                  <div
+                    key={r.count}
+                    className={`rounded-xl p-3 text-center border transition ${
+                      earned
+                        ? "border-green-500/30 bg-green-500/10"
+                        : isNext
+                        ? "border-amber-500/40 bg-amber-500/5 animate-pulse"
+                        : "border-white/5 bg-white/[0.02]"
+                    }`}
+                  >
+                    <div className="text-2xl mb-1">{r.emoji}</div>
+                    <div className="text-xs font-bold text-white/80">{r.count}</div>
+                    <div className="text-[10px] text-white/40 leading-tight mt-0.5">{r.name}</div>
+                    {earned && <Check className="w-3 h-3 text-green-400 mx-auto mt-1" />}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-gold-600/10 mt-12">
+      <footer className="relative z-10 border-t border-white/5 mt-12">
         <div className="max-w-7xl mx-auto px-6 py-6 text-center">
-          <p className="text-sm text-stone-500">
-            Clash of Clans Tracker — Fan-made tool for the August 2026 Clashiversary Event
+          <p className="text-sm text-white/40">
+            Clash of Cards Tracker — Fan-made tool for the August 2026 Clashiversary Event
           </p>
-          <p className="text-xs text-stone-600 mt-1">
+          <p className="text-xs text-white/30 mt-1">
             Card images from the{" "}
             <a
               href="https://clashofclans.fandom.com/wiki/Clash_of_Cards"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gold-500/70 hover:text-gold-400 transition underline-offset-2 hover:underline"
+              className="text-cyan-400/60 hover:text-cyan-400 transition underline-offset-2 hover:underline"
             >
               Clash of Clans Wiki
             </a>
@@ -545,41 +510,32 @@ function CardItem({
   return (
     <div
       onClick={isShared ? undefined : onToggle}
-      className={`relative rounded-lg border overflow-hidden group transition-all duration-300 ${
-        isShared ? "" : "cursor-pointer active:scale-[0.98]"
-      } ${expanded ? "ring-2 ring-gold-500/40 z-10" : ""}`}
+      className={`relative rounded-xl border transition-all duration-300 overflow-hidden group ${
+        has ? "border-white/15" : "border-white/5"
+      } ${expanded ? "ring-2 ring-white/30 z-10" : ""} ${isShared ? "" : "cursor-pointer active:scale-[0.98]"}`}
       style={{
-        borderColor: has ? rarity.color : "#2a1f14",
-        background: "linear-gradient(160deg, #1a130c, #120d08)",
-        boxShadow: has
-          ? `inset 0 0 0 1px rgba(212,175,55,0.1), 0 4px 16px -4px ${rarity.color}55`
-          : "inset 0 0 0 1px rgba(255,255,255,0.02)",
+        background: has
+          ? `linear-gradient(135deg, ${meta.bg.includes("pink") ? "rgba(224,40,126,0.12)" : meta.bg.includes("purple") ? "rgba(139,43,226,0.12)" : meta.bg.includes("amber") ? "rgba(245,166,35,0.12)" : "rgba(0,194,255,0.12)"}, transparent)`
+          : "rgba(255,255,255,0.02)",
       }}
     >
-      {/* Corner rivets */}
-      <span className="absolute top-1.5 left-1.5 w-1.5 h-1.5 rounded-full bg-gradient-to-br from-gold-300/70 to-stone-700/70" />
-      <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-gradient-to-br from-gold-300/70 to-stone-700/70" />
-
-      {/* Rarity glow line */}
+      {/* Rarity stripe */}
       <div
-        className="h-1"
-        style={{
-          background: has
-            ? `linear-gradient(90deg, transparent, ${rarity.color}, transparent)`
-            : "transparent",
-        }}
+        className="absolute top-0 left-0 right-0 h-1"
+        style={{ backgroundColor: rarity.color, opacity: has ? 1 : 0.3 }}
       />
 
       {/* Card body */}
-      <div className="p-3 pt-3">
+      <div className="p-3 pt-4">
         {/* Image / emoji art */}
         <div
-          className={`relative aspect-square rounded-md mb-2.5 flex items-center justify-center text-4xl overflow-hidden transition-all ${
+          className={`relative aspect-square rounded-lg mb-2.5 flex items-center justify-center text-4xl transition-all overflow-hidden ${
             has ? "" : "grayscale opacity-30"
           }`}
           style={{
-            background: "radial-gradient(circle at 50% 35%, rgba(212,175,55,0.10), transparent 70%)",
-            boxShadow: "inset 0 2px 6px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(212,175,55,0.08)",
+            background: has
+              ? `radial-gradient(circle at center, ${meta.glow}, transparent 70%)`
+              : "rgba(255,255,255,0.03)",
           }}
         >
           {!imgError ? (
@@ -594,23 +550,19 @@ function CardItem({
             <span>{card.emoji}</span>
           )}
           {!has && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-              <Lock className="w-6 h-6 text-stone-400" />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+              <Lock className="w-6 h-6 text-white/40" />
             </div>
           )}
           {duplicates > 0 && (
-            <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded-md bg-stone-950/80 border border-gold-600/30 text-[10px] font-bold text-gold-300">
+            <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded-md bg-black/60 text-[10px] font-bold text-amber-300">
               x{count}
             </span>
           )}
         </div>
 
         {/* Name */}
-        <h3
-          className={`font-title text-sm font-bold leading-tight mb-1 tracking-wide ${
-            has ? "text-stone-100" : "text-stone-600"
-          }`}
-        >
+        <h3 className={`text-sm font-bold leading-tight mb-1 ${has ? "text-white" : "text-white/40"}`}>
           {card.name}
         </h3>
 
@@ -619,7 +571,7 @@ function CardItem({
           <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: rarity.color }}>
             {rarity.label}
           </span>
-          <span className="text-[10px] text-stone-500">{meta.short}</span>
+          <span className="text-[10px] text-white/30">{meta.short}</span>
         </div>
 
         {/* Expand button */}
@@ -628,7 +580,7 @@ function CardItem({
             e.stopPropagation();
             onExpand();
           }}
-          className="w-full flex items-center justify-center gap-1 py-1 rounded border border-stone-700 hover:border-gold-600/40 text-[10px] text-stone-400 hover:text-gold-300 transition mb-2"
+          className="w-full flex items-center justify-center gap-1 py-1 rounded-md bg-white/5 hover:bg-white/10 text-[10px] text-white/50 transition mb-2"
         >
           {expanded ? "Hide" : "Info"}
           <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
@@ -636,13 +588,13 @@ function CardItem({
 
         {expanded && (
           <>
-            <p className="text-xs text-stone-400 leading-relaxed mb-2 italic">{card.description}</p>
+            <p className="text-xs text-white/50 leading-relaxed mb-2 italic">{card.description}</p>
             <a
               href={card.wikiUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center justify-center gap-1.5 py-1.5 mb-2 rounded border border-gold-600/20 hover:border-gold-500/50 text-[10px] text-gold-400 transition"
+              className="flex items-center justify-center gap-1.5 py-1.5 mb-2 rounded-md bg-white/5 hover:bg-white/10 text-[10px] text-cyan-400 transition"
             >
               <ExternalLink className="w-3 h-3" />
               View on Wiki
@@ -658,10 +610,10 @@ function CardItem({
                 e.stopPropagation();
                 onToggle();
               }}
-              className={`flex-1 flex items-center justify-center gap-1 py-2 rounded text-xs font-bold transition border ${
+              className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold transition ${
                 has
-                  ? "bg-gold-600/15 text-gold-300 border-gold-500/40 hover:bg-gold-600/25"
-                  : "bg-stone-900 text-stone-500 border-stone-700 hover:border-stone-600"
+                  ? "bg-green-500/15 text-green-400 hover:bg-green-500/25"
+                  : "bg-white/5 text-white/40 hover:bg-white/10"
               }`}
             >
               {has ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
@@ -674,7 +626,7 @@ function CardItem({
                     e.stopPropagation();
                     onSetCount(count - 1);
                   }}
-                  className="w-7 h-7 flex items-center justify-center rounded border border-stone-700 hover:border-gold-600/40 text-stone-400 hover:text-gold-300 text-sm font-bold transition"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 text-sm font-bold transition"
                 >
                   −
                 </button>
@@ -683,7 +635,7 @@ function CardItem({
                     e.stopPropagation();
                     onSetCount(count + 1);
                   }}
-                  className="w-7 h-7 flex items-center justify-center rounded border border-stone-700 hover:border-gold-600/40 text-stone-400 hover:text-gold-300 text-sm font-bold transition"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 text-sm font-bold transition"
                 >
                   +
                 </button>
@@ -694,10 +646,8 @@ function CardItem({
 
         {isShared && (
           <div
-            className={`w-full py-2 rounded text-xs font-bold text-center border ${
-              has
-                ? "bg-gold-600/15 text-gold-300 border-gold-500/40"
-                : "bg-stone-900 text-stone-500 border-stone-700"
+            className={`w-full py-2 rounded-lg text-xs font-bold text-center ${
+              has ? "bg-green-500/15 text-green-400" : "bg-white/5 text-white/30"
             }`}
           >
             {has ? "Collected" : "Missing"}
@@ -705,30 +655,6 @@ function CardItem({
         )}
       </div>
     </div>
-  );
-}
-
-function CrestIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" className={className} fill="none">
-      <defs>
-        <linearGradient id="crestGold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#f0d98c" />
-          <stop offset="50%" stopColor="#d4af37" />
-          <stop offset="100%" stopColor="#ff6a3d" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M24 3 L42 10 V22 C42 33 34.5 41 24 45 C13.5 41 6 33 6 22 V10 Z"
-        fill="#1a130c"
-        stroke="url(#crestGold)"
-        strokeWidth="2"
-      />
-      <path
-        d="M24 11 L28.5 20.5 L39 22 L31.5 29 L33.5 39.5 L24 34.5 L14.5 39.5 L16.5 29 L9 22 L19.5 20.5 Z"
-        fill="url(#crestGold)"
-      />
-    </svg>
   );
 }
 
