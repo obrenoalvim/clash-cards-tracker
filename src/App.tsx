@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, memo } from "react";
 import {
   CARDS,
   CATEGORY_META,
@@ -33,6 +33,13 @@ type FilterMode = "all" | "collected" | "missing";
 type CategoryFilter = "all" | CardCategory;
 
 const STORAGE_KEY = "coc-cards-collection";
+const ONBOARDED_KEY = "coc-cards-onboarded";
+const EVENT_END = new Date(2026, 7, 31, 23, 59, 59); // August 31, 2026, end of day
+
+function daysUntil(date: Date): number {
+  const ms = date.getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+}
 
 function loadCollection(): Collection {
   try {
@@ -70,16 +77,33 @@ export default function App() {
   const [showShare, setShowShare] = useState(false);
   const [copied, setCopied] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [undoCollection, setUndoCollection] = useState<Collection | null>(null);
+  const undoTimerRef = useRef<number | null>(null);
 
   const isSharedView = useMemo(() => {
     return window.location.hash.startsWith("#c=");
   }, []);
+
+  const daysLeft = daysUntil(EVENT_END);
+  const eventEnded = Date.now() > EVENT_END.getTime();
 
   useEffect(() => {
     if (!isSharedView) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
     }
   }, [collection, isSharedView]);
+
+  useEffect(() => {
+    if (!isSharedView && !localStorage.getItem(ONBOARDED_KEY)) {
+      setShowOnboarding(true);
+    }
+  }, [isSharedView]);
+
+  const dismissOnboarding = useCallback(() => {
+    setShowOnboarding(false);
+    localStorage.setItem(ONBOARDED_KEY, "1");
+  }, []);
 
   const setCardCount = useCallback((cardId: string, count: number) => {
     if (isSharedView) return;
@@ -103,11 +127,19 @@ export default function App() {
   }, [isSharedView]);
 
   const resetCollection = useCallback(() => {
-    if (confirm("Reset your entire collection? This cannot be undone.")) {
-      setCollection({});
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  }, []);
+    if (Object.keys(collection).length === 0) return;
+    setUndoCollection(collection);
+    setCollection({});
+    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = window.setTimeout(() => setUndoCollection(null), 5000);
+  }, [collection]);
+
+  const undoResetCollection = useCallback(() => {
+    if (!undoCollection) return;
+    setCollection(undoCollection);
+    setUndoCollection(null);
+    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+  }, [undoCollection]);
 
   const shareUrl = useMemo(() => {
     const encoded = encodeCollection(collection);
@@ -121,17 +153,6 @@ export default function App() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [shareUrl]);
-
-  const filteredCards = useMemo(() => {
-    return CARDS.filter((card) => {
-      if (categoryFilter !== "all" && card.category !== categoryFilter) return false;
-      if (search && !card.name.toLowerCase().includes(search.toLowerCase())) return false;
-      const count = collection[card.id] || 0;
-      if (filterMode === "collected" && count === 0) return false;
-      if (filterMode === "missing" && count > 0) return false;
-      return true;
-    });
-  }, [search, filterMode, categoryFilter, collection]);
 
   const stats = useMemo(() => {
     const total = CARDS.length;
@@ -155,6 +176,28 @@ export default function App() {
 
     return { total, collected, duplicates, byCategory };
   }, [collection]);
+
+  const filteredCards = useMemo(() => {
+    const list = CARDS.filter((card) => {
+      if (categoryFilter !== "all" && card.category !== categoryFilter) return false;
+      if (search && !card.name.toLowerCase().includes(search.toLowerCase())) return false;
+      const count = collection[card.id] || 0;
+      if (filterMode === "collected" && count === 0) return false;
+      if (filterMode === "missing" && count > 0) return false;
+      return true;
+    });
+
+    if (filterMode === "missing") {
+      // Surface categories closest to completion first — most actionable for the player.
+      return [...list].sort((a, b) => {
+        const pctA = stats.byCategory[a.category].collected / stats.byCategory[a.category].total;
+        const pctB = stats.byCategory[b.category].collected / stats.byCategory[b.category].total;
+        return pctB - pctA;
+      });
+    }
+
+    return list;
+  }, [search, filterMode, categoryFilter, collection, stats]);
 
   const nextReward = useMemo(() => {
     return REWARDS.find((r) => stats.collected < r.count) || null;
@@ -182,7 +225,11 @@ export default function App() {
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
                 Clash of Clans Tracker
               </h1>
-              <p className="text-xs text-white/50">August 2026 Clashiversary Event</p>
+              <p className="text-xs text-white/50">
+                {eventEnded
+                  ? "August 2026 Clashiversary Event — ended"
+                  : `August 2026 Clashiversary Event — ${daysLeft} day${daysLeft === 1 ? "" : "s"} left`}
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -247,6 +294,29 @@ export default function App() {
 
       {/* Main content */}
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        {showOnboarding && (
+          <div className="mb-6 flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <p className="text-sm text-amber-200">
+              💡 Tap any card to mark it as collected. Tap again to unmark it.
+            </p>
+            <button
+              onClick={dismissOnboarding}
+              className="shrink-0 p-1 rounded-md hover:bg-white/10 text-amber-200/70 hover:text-amber-200 transition"
+              aria-label="Dismiss tip"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {eventEnded && (
+          <div className="mb-6 px-4 py-3 rounded-lg bg-white/5 border border-white/10">
+            <p className="text-sm text-white/60">
+              The Clashiversary event has ended. Your collection stays saved, but new cards can no longer be earned in-game.
+            </p>
+          </div>
+        )}
+
         {/* Controls */}
         <section className="mb-6 space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -455,7 +525,7 @@ export default function App() {
           <p className="text-sm text-white/40">
             Clash of Clans Tracker — Fan-made tool for the August 2026 Clashiversary Event
           </p>
-          <p className="text-xs text-white/30 mt-1">
+          <p className="text-xs text-white/40 mt-1">
             Card images from the{" "}
             <a
               href="https://clashofclans.fandom.com/wiki/Clash_of_Cards"
@@ -469,11 +539,24 @@ export default function App() {
           </p>
         </div>
       </footer>
+
+      {/* Undo toast */}
+      {undoCollection && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 px-4 py-3 rounded-lg bg-[#1a1a24] border border-white/15 shadow-xl">
+          <p className="text-sm text-white/80">Collection reset.</p>
+          <button
+            onClick={undoResetCollection}
+            className="text-sm font-semibold text-amber-300 hover:text-amber-200 transition"
+          >
+            Undo
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-function CardItem({
+const CardItem = memo(function CardItem({
   card,
   count,
   isShared,
@@ -495,16 +578,30 @@ function CardItem({
   const has = count > 0;
   const duplicates = Math.max(0, count - 1);
   const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isShared) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onToggle();
+    }
+  };
 
   return (
     <div
       onClick={isShared ? undefined : onToggle}
-      className={`relative rounded-xl border transition-all duration-300 overflow-hidden group ${
+      onKeyDown={handleKeyDown}
+      role={isShared ? undefined : "button"}
+      tabIndex={isShared ? undefined : 0}
+      aria-pressed={isShared ? undefined : has}
+      aria-label={`${card.name}, ${has ? "collected" : "not collected"}`}
+      className={`relative rounded-xl border transition-all duration-300 overflow-hidden group focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${
         has ? "border-white/15" : "border-white/5"
       } ${expanded ? "ring-2 ring-white/30 z-10" : ""} ${isShared ? "" : "cursor-pointer active:scale-[0.98]"}`}
       style={{
         background: has
-          ? `linear-gradient(135deg, ${meta.bg.includes("pink") ? "rgba(224,40,126,0.12)" : meta.bg.includes("purple") ? "rgba(139,43,226,0.12)" : meta.bg.includes("amber") ? "rgba(245,166,35,0.12)" : "rgba(0,194,255,0.12)"}, transparent)`
+          ? `linear-gradient(135deg, ${meta.glow}, transparent)`
           : "rgba(255,255,255,0.02)",
       }}
     >
@@ -527,12 +624,18 @@ function CardItem({
               : "rgba(255,255,255,0.03)",
           }}
         >
+          {!imgLoaded && !imgError && (
+            <div className="absolute inset-0 bg-white/5 animate-pulse" />
+          )}
           {!imgError ? (
             <img
               src={card.imageUrl}
               alt={card.name}
+              onLoad={() => setImgLoaded(true)}
               onError={() => setImgError(true)}
-              className="w-full h-full object-contain p-1"
+              className={`w-full h-full object-contain p-1 transition-opacity duration-300 ${
+                imgLoaded ? "opacity-100" : "opacity-0"
+              }`}
               loading="lazy"
             />
           ) : (
@@ -560,7 +663,7 @@ function CardItem({
           <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: rarity.color }}>
             {rarity.label}
           </span>
-          <span className="text-[10px] text-white/30">{meta.short}</span>
+          <span className="text-[10px] text-white/40">{meta.short}</span>
         </div>
 
         {/* Expand button */}
@@ -615,7 +718,9 @@ function CardItem({
                     e.stopPropagation();
                     onSetCount(count - 1);
                   }}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 text-sm font-bold transition"
+                  disabled={count <= 1}
+                  title={count <= 1 ? "Use Have/Missing to unmark this card" : undefined}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 hover:enabled:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white/60 text-sm font-bold transition"
                 >
                   −
                 </button>
@@ -636,7 +741,7 @@ function CardItem({
         {isShared && (
           <div
             className={`w-full py-2 rounded-lg text-xs font-bold text-center ${
-              has ? "bg-green-500/15 text-green-400" : "bg-white/5 text-white/30"
+              has ? "bg-green-500/15 text-green-400" : "bg-white/5 text-white/40"
             }`}
           >
             {has ? "Collected" : "Missing"}
@@ -645,7 +750,7 @@ function CardItem({
       </div>
     </div>
   );
-}
+});
 
 function DropletIcon() {
   return (

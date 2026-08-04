@@ -1,6 +1,6 @@
 # Clash Cards Tracker
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/obrenoalvim/clash-cards-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/obrenoalvim/clash-cards-tracker/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Live:** [clash-cards-tracker.vercel.app](https://clash-cards-tracker.vercel.app/)
 
@@ -44,9 +44,10 @@ npm run build
 # Pré-visualização do build
 npm run preview
 
-# Lint e checagem de tipos
+# Lint, checagem de tipos e testes
 npm run lint
 npm run typecheck
+npm run test
 ```
 
 ## Estrutura do Projeto
@@ -75,6 +76,7 @@ npm run typecheck
 - `preview`: sobe um servidor para pré-visualizar o build
 - `lint`: executa o ESLint
 - `typecheck`: roda o `tsc --noEmit`
+- `test`: roda os testes (Vitest) — hoje cobre a integridade do roster de 60 cartas
 
 ## Aviso
 Projeto feito por fã, sem afiliação com a Supercell. Clash of Clans é marca registrada da Supercell. Ícones das cartas vêm do [Clash of Clans Wiki](https://clashofclans.fandom.com/wiki/Clash_of_Cards) (Fandom).
