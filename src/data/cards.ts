@@ -12,14 +12,9 @@ export interface Card {
 }
 
 const WIKI_BASE = "https://clashofclans.fandom.com/wiki";
-const IMG_BASE = "https://clashofclans.fandom.com/wiki/Special:FilePath";
 
 function wiki(page: string): string {
   return `${WIKI_BASE}/${page.replace(/ /g, "_")}`;
-}
-
-function img(file: string): string {
-  return `${IMG_BASE}/${file.replace(/ /g, "_")}`;
 }
 
 export const CATEGORY_META: Record<
