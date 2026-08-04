@@ -13,3 +13,5 @@ Allow: /
 
 User-agent: Google-Extended
 Allow: /
+
+Sitemap: https://clash-cards-tracker.vercel.app/sitemap.xml

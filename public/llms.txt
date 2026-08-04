@@ -14,6 +14,7 @@ Helps Clash of Clans players answer: which cards do I still need, how close am I
 
 ## Docs
 
+- [Live app](https://clash-cards-tracker.vercel.app/): the tracker itself.
 - [README](https://github.com/obrenoalvim/clash-cards-tracker/blob/main/README.md): setup, scripts, project structure.
 - [Source](https://github.com/obrenoalvim/clash-cards-tracker): full source code (React + TypeScript + Vite + Tailwind CSS).
 - [Card data](https://github.com/obrenoalvim/clash-cards-tracker/blob/main/src/data/cards.ts): the full 60-card roster with categories, rarities, and image sources.

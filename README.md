@@ -2,6 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+**Live:** [clash-cards-tracker.vercel.app](https://clash-cards-tracker.vercel.app/)
+
 Aplicação web em React + TypeScript para acompanhar sua coleção de cartas do evento **Clash of Cards** (Clashiversary, Clash of Clans, agosto/2026). Busque, filtre e marque as cartas que você já tem — tudo salvo localmente no navegador, sem backend.
 
 ## Visão Geral
