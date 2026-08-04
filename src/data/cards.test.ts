@@ -32,4 +32,10 @@ describe("card roster", () => {
       expect(card.wikiUrl, `${card.id} wikiUrl`).toMatch(/^https:\/\//);
     }
   });
+
+  it("every card has a Portuguese description", () => {
+    for (const card of CARDS) {
+      expect(card.descriptionPt, `${card.id} descriptionPt`).toBeTruthy();
+    }
+  });
 });

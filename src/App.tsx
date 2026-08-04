@@ -8,6 +8,7 @@ import {
   type Card,
   type CardCategory,
 } from "@/data/cards";
+import { STRINGS, type Lang } from "@/i18n";
 import {
   Search,
   Check,
@@ -26,6 +27,7 @@ import {
   Hammer,
   Zap,
   ExternalLink,
+  Languages,
 } from "lucide-react";
 
 type Collection = Record<string, number>;
@@ -34,6 +36,7 @@ type CategoryFilter = "all" | CardCategory;
 
 const STORAGE_KEY = "coc-cards-collection";
 const ONBOARDED_KEY = "coc-cards-onboarded";
+const LANG_KEY = "coc-cards-lang";
 const EVENT_END = new Date(2026, 7, 31, 23, 59, 59); // August 31, 2026, end of day
 
 function daysUntil(date: Date): number {
@@ -80,6 +83,15 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [undoCollection, setUndoCollection] = useState<Collection | null>(null);
   const undoTimerRef = useRef<number | null>(null);
+  const [lang, setLang] = useState<Lang>(() => {
+    const saved = localStorage.getItem(LANG_KEY);
+    return saved === "pt" ? "pt" : "en";
+  });
+  const s = STRINGS[lang];
+
+  useEffect(() => {
+    localStorage.setItem(LANG_KEY, lang);
+  }, [lang]);
 
   const isSharedView = useMemo(() => {
     return window.location.hash.startsWith("#c=");
@@ -227,19 +239,27 @@ export default function App() {
               </h1>
               <p className="text-xs text-white/50">
                 {eventEnded
-                  ? "August 2026 Clashiversary Event — ended"
-                  : `August 2026 Clashiversary Event — ${daysLeft} day${daysLeft === 1 ? "" : "s"} left`}
+                  ? `${s.eventSubtitleActive} — ${s.eventEnded}`
+                  : `${s.eventSubtitleActive} — ${daysLeft} ${daysLeft === 1 ? s.dayLeft : s.daysLeft}`}
               </p>
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setLang(lang === "en" ? "pt" : "en")}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm font-semibold"
+                aria-label="Toggle language"
+              >
+                <Languages className="w-4 h-4" />
+                {s.langToggle}
+              </button>
               {isSharedView ? (
                 <a
                   href={window.location.pathname}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm font-semibold"
                 >
                   <Eye className="w-4 h-4" />
-                  My Collection
+                  {s.myCollection}
                 </a>
               ) : (
                 <>
@@ -248,14 +268,14 @@ export default function App() {
                     className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm font-semibold"
                   >
                     <Share2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">Share</span>
+                    <span className="hidden sm:inline">{s.share}</span>
                   </button>
                   <button
                     onClick={resetCollection}
                     className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition text-sm font-semibold"
                   >
                     <RotateCcw className="w-4 h-4" />
-                    <span className="hidden sm:inline">Reset</span>
+                    <span className="hidden sm:inline">{s.reset}</span>
                   </button>
                 </>
               )}
@@ -276,7 +296,7 @@ export default function App() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-sm font-semibold shrink-0"
               >
                 {copied ? <CheckCheck className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? "Copied!" : "Copy"}
+                {copied ? s.copied : s.copy}
               </button>
             </div>
           )}
@@ -285,7 +305,7 @@ export default function App() {
             <div className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
               <Eye className="w-4 h-4 text-cyan-400" />
               <p className="text-sm text-cyan-300">
-                Viewing a shared collection. Items are filtered to show collected only.
+                {s.sharedBanner}
               </p>
             </div>
           )}
@@ -297,12 +317,12 @@ export default function App() {
         {showOnboarding && (
           <div className="mb-6 flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <p className="text-sm text-amber-200">
-              💡 Tap any card to mark it as collected. Tap again to unmark it.
+              {s.onboardingTip}
             </p>
             <button
               onClick={dismissOnboarding}
               className="shrink-0 p-1 rounded-md hover:bg-white/10 text-amber-200/70 hover:text-amber-200 transition"
-              aria-label="Dismiss tip"
+              aria-label={s.dismissTip}
             >
               <X className="w-4 h-4" />
             </button>
@@ -312,7 +332,7 @@ export default function App() {
         {eventEnded && (
           <div className="mb-6 px-4 py-3 rounded-lg bg-white/5 border border-white/10">
             <p className="text-sm text-white/60">
-              The Clashiversary event has ended. Your collection stays saved, but new cards can no longer be earned in-game.
+              {s.eventEndedBanner}
             </p>
           </div>
         )}
@@ -324,7 +344,7 @@ export default function App() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
               <input
                 type="text"
-                placeholder="Search cards..."
+                placeholder={s.searchPlaceholder}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-sm placeholder:text-white/30 focus:outline-none focus:border-white/30 transition"
@@ -336,13 +356,13 @@ export default function App() {
                 <button
                   key={mode}
                   onClick={() => setFilterMode(mode)}
-                  className={`px-3 sm:px-4 py-2.5 rounded-lg text-sm font-semibold transition capitalize ${
+                  className={`px-3 sm:px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
                     filterMode === mode
                       ? "bg-white/15 text-white"
                       : "bg-white/5 text-white/50 hover:bg-white/10"
                   }`}
                 >
-                  {mode}
+                  {mode === "all" ? s.filterAll : mode === "collected" ? s.filterCollected : s.filterMissing}
                 </button>
               ))}
             </div>
@@ -356,7 +376,7 @@ export default function App() {
                 categoryFilter === "all" ? "bg-white/15 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"
               }`}
             >
-              All Cards
+              {s.allCards}
             </button>
             {(Object.keys(CATEGORY_META) as CardCategory[]).map((cat) => {
               const meta = CATEGORY_META[cat];
@@ -369,7 +389,7 @@ export default function App() {
                   }`}
                 >
                   <span style={{ color: meta.color }}>{categoryIcons[cat]}</span>
-                  {meta.short}
+                  {lang === "pt" ? meta.shortPt : meta.short}
                 </button>
               );
             })}
@@ -381,7 +401,7 @@ export default function App() {
           {filteredCards.length === 0 ? (
             <div className="text-center py-20 text-white/40">
               <Filter className="w-12 h-12 mx-auto mb-4 opacity-30" />
-              <p>No cards match your filters.</p>
+              <p>{s.noMatch}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
@@ -391,6 +411,7 @@ export default function App() {
                   card={card}
                   count={collection[card.id] || 0}
                   isShared={isSharedView}
+                  lang={lang}
                   onToggle={() => toggleCard(card.id)}
                   onSetCount={(n) => setCardCount(card.id, n)}
                   expanded={expandedCard === card.id}
@@ -406,9 +427,9 @@ export default function App() {
           <div className="rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 p-6 sm:p-8">
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
               <div>
-                <h2 className="text-lg font-bold text-white/90">Collection Progress</h2>
+                <h2 className="text-lg font-bold text-white/90">{s.collectionProgress}</h2>
                 <p className="text-sm text-white/50 mt-0.5">
-                  {stats.collected} of {stats.total} unique cards collected
+                  {stats.collected} {s.cardsCollectedOf} {stats.total} {s.cardsCollectedSuffix}
                 </p>
               </div>
               <div className="text-right">
@@ -416,7 +437,7 @@ export default function App() {
                   {Math.round((stats.collected / stats.total) * 100)}%
                 </div>
                 {stats.duplicates > 0 && (
-                  <p className="text-xs text-white/40 mt-0.5">{stats.duplicates} duplicates for trading</p>
+                  <p className="text-xs text-white/40 mt-0.5">{stats.duplicates} {s.duplicatesForTrading}</p>
                 )}
               </div>
             </div>
@@ -432,7 +453,7 @@ export default function App() {
                   key={r.count}
                   className="absolute top-0 bottom-0 w-0.5 bg-white/30"
                   style={{ left: `${(r.count / stats.total) * 100}%` }}
-                  title={`${r.count} cards: ${r.name}`}
+                  title={`${r.count}: ${lang === "pt" ? r.namePt : r.name}`}
                 />
               ))}
             </div>
@@ -441,9 +462,9 @@ export default function App() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {(Object.keys(CATEGORY_META) as CardCategory[]).map((cat) => {
                 const meta = CATEGORY_META[cat];
-                const s = stats.byCategory[cat];
-                const pct = s.total > 0 ? Math.round((s.collected / s.total) * 100) : 0;
-                const complete = s.collected === s.total;
+                const catStats = stats.byCategory[cat];
+                const pct = catStats.total > 0 ? Math.round((catStats.collected / catStats.total) * 100) : 0;
+                const complete = catStats.collected === catStats.total;
                 return (
                   <div
                     key={cat}
@@ -457,14 +478,14 @@ export default function App() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-bold flex items-center gap-1.5" style={{ color: meta.color }}>
                         {categoryIcons[cat]}
-                        {meta.short}
+                        {lang === "pt" ? meta.shortPt : meta.short}
                       </span>
                       {complete && <Check className="w-4 h-4 text-green-400" />}
                     </div>
                     <div className="flex items-baseline justify-between mb-2">
                       <span className="text-2xl font-black">
-                        {s.collected}
-                        <span className="text-sm text-white/40 font-normal">/{s.total}</span>
+                        {catStats.collected}
+                        <span className="text-sm text-white/40 font-normal">/{catStats.total}</span>
                       </span>
                       <span className="text-xs text-white/40">{pct}%</span>
                     </div>
@@ -476,7 +497,7 @@ export default function App() {
                     </div>
                     {complete && (
                       <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
-                        <Trophy className="w-3 h-3" /> {SET_REWARDS[cat].emoji} {SET_REWARDS[cat].name}
+                        <Trophy className="w-3 h-3" /> {SET_REWARDS[cat].emoji} {lang === "pt" ? SET_REWARDS[cat].namePt : SET_REWARDS[cat].name}
                       </p>
                     )}
                   </div>
@@ -490,7 +511,7 @@ export default function App() {
         <section className="mb-8">
           <div className="rounded-2xl bg-gradient-to-br from-amber-500/[0.08] to-transparent border border-amber-500/20 p-6">
             <h3 className="text-sm font-bold text-amber-400 mb-4 flex items-center gap-2">
-              <Sparkles className="w-4 h-4" /> Milestone Rewards
+              <Sparkles className="w-4 h-4" /> {s.milestoneRewards}
             </h3>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
               {REWARDS.map((r) => {
@@ -509,7 +530,7 @@ export default function App() {
                   >
                     <div className="text-2xl mb-1">{r.emoji}</div>
                     <div className="text-xs font-bold text-white/80">{r.count}</div>
-                    <div className="text-[10px] text-white/40 leading-tight mt-0.5">{r.name}</div>
+                    <div className="text-[10px] text-white/40 leading-tight mt-0.5">{lang === "pt" ? r.namePt : r.name}</div>
                     {earned && <Check className="w-3 h-3 text-green-400 mx-auto mt-1" />}
                   </div>
                 );
@@ -523,19 +544,19 @@ export default function App() {
       <footer className="relative z-10 border-t border-white/5 mt-12">
         <div className="max-w-7xl mx-auto px-6 py-6 text-center">
           <p className="text-sm text-white/40">
-            Clash of Clans Tracker — Fan-made tool for the August 2026 Clashiversary Event
+            {s.footerTagline}
           </p>
           <p className="text-xs text-white/40 mt-1">
-            Card images from the{" "}
+            {s.footerImagesFrom}{" "}
             <a
               href="https://clashofclans.fandom.com/wiki/Clash_of_Cards"
               target="_blank"
               rel="noopener noreferrer"
               className="text-cyan-400/60 hover:text-cyan-400 transition underline-offset-2 hover:underline"
             >
-              Clash of Clans Wiki
+              {s.footerWiki}
             </a>
-            . Not affiliated with Supercell. Clash of Clans is a trademark of Supercell.
+            {s.footerDisclaimer}
           </p>
         </div>
       </footer>
@@ -543,12 +564,12 @@ export default function App() {
       {/* Undo toast */}
       {undoCollection && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 px-4 py-3 rounded-lg bg-[#1a1a24] border border-white/15 shadow-xl">
-          <p className="text-sm text-white/80">Collection reset.</p>
+          <p className="text-sm text-white/80">{s.resetToast}</p>
           <button
             onClick={undoResetCollection}
             className="text-sm font-semibold text-amber-300 hover:text-amber-200 transition"
           >
-            Undo
+            {s.undo}
           </button>
         </div>
       )}
@@ -560,6 +581,7 @@ const CardItem = memo(function CardItem({
   card,
   count,
   isShared,
+  lang,
   onToggle,
   onSetCount,
   expanded,
@@ -568,11 +590,13 @@ const CardItem = memo(function CardItem({
   card: Card;
   count: number;
   isShared: boolean;
+  lang: Lang;
   onToggle: () => void;
   onSetCount: (n: number) => void;
   expanded: boolean;
   onExpand: () => void;
 }) {
+  const s = STRINGS[lang];
   const meta = CATEGORY_META[card.category];
   const rarity = RARITY_META[card.rarity];
   const has = count > 0;
@@ -595,7 +619,7 @@ const CardItem = memo(function CardItem({
       role={isShared ? undefined : "button"}
       tabIndex={isShared ? undefined : 0}
       aria-pressed={isShared ? undefined : has}
-      aria-label={`${card.name}, ${has ? "collected" : "not collected"}`}
+      aria-label={`${card.name}, ${has ? s.collected : s.missing}`}
       className={`relative rounded-xl border transition-all duration-300 overflow-hidden group focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${
         has ? "border-white/15" : "border-white/5"
       } ${expanded ? "ring-2 ring-white/30 z-10" : ""} ${isShared ? "" : "cursor-pointer active:scale-[0.98]"}`}
@@ -661,9 +685,9 @@ const CardItem = memo(function CardItem({
         {/* Rarity + category */}
         <div className="flex items-center justify-between mb-2.5">
           <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: rarity.color }}>
-            {rarity.label}
+            {lang === "pt" ? rarity.labelPt : rarity.label}
           </span>
-          <span className="text-[10px] text-white/40">{meta.short}</span>
+          <span className="text-[10px] text-white/40">{lang === "pt" ? meta.shortPt : meta.short}</span>
         </div>
 
         {/* Expand button */}
@@ -674,13 +698,15 @@ const CardItem = memo(function CardItem({
           }}
           className="w-full flex items-center justify-center gap-1 py-1 rounded-md bg-white/5 hover:bg-white/10 text-[10px] text-white/50 transition mb-2"
         >
-          {expanded ? "Hide" : "Info"}
+          {expanded ? s.hide : s.info}
           <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
         </button>
 
         {expanded && (
           <>
-            <p className="text-xs text-white/50 leading-relaxed mb-2 italic">{card.description}</p>
+            <p className="text-xs text-white/50 leading-relaxed mb-2 italic">
+              {lang === "pt" ? card.descriptionPt : card.description}
+            </p>
             <a
               href={card.wikiUrl}
               target="_blank"
@@ -689,7 +715,7 @@ const CardItem = memo(function CardItem({
               className="flex items-center justify-center gap-1.5 py-1.5 mb-2 rounded-md bg-white/5 hover:bg-white/10 text-[10px] text-cyan-400 transition"
             >
               <ExternalLink className="w-3 h-3" />
-              View on Wiki
+              {s.viewOnWiki}
             </a>
           </>
         )}
@@ -709,7 +735,7 @@ const CardItem = memo(function CardItem({
               }`}
             >
               {has ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
-              {has ? "Have" : "Missing"}
+              {has ? s.have : s.missing}
             </button>
             {has && (
               <div className="flex gap-1">
@@ -719,7 +745,7 @@ const CardItem = memo(function CardItem({
                     onSetCount(count - 1);
                   }}
                   disabled={count <= 1}
-                  title={count <= 1 ? "Use Have/Missing to unmark this card" : undefined}
+                  title={count <= 1 ? s.minusDisabledTitle : undefined}
                   className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 hover:enabled:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white/60 text-sm font-bold transition"
                 >
                   −
@@ -744,7 +770,7 @@ const CardItem = memo(function CardItem({
               has ? "bg-green-500/15 text-green-400" : "bg-white/5 text-white/40"
             }`}
           >
-            {has ? "Collected" : "Missing"}
+            {has ? s.collected : s.missing}
           </div>
         )}
       </div>

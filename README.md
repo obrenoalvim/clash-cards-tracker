@@ -7,7 +7,8 @@
 Aplicação web em React + TypeScript para acompanhar sua coleção de cartas do evento **Clash of Cards** (Clashiversary, Clash of Clans, agosto/2026). Busque, filtre e marque as cartas que você já tem — tudo salvo localmente no navegador, sem backend.
 
 ## Visão Geral
-- Grade com as 60 cartas oficiais do evento (Elixir, Elixir Negro, Vila do Construtor e Super Tropas), com ícones reais resolvidos via API do Fandom Wiki.
+- Grade com as 60 cartas oficiais do evento (Elixir, Elixir Negro, Base do Construtor e Super Tropas), com ícones reais resolvidos via API do Fandom Wiki.
+- Alternância de idioma (EN/PT) no header — nomes de tropas ficam em inglês (como no jogo), o resto da interface traduz.
 - Clique em qualquer parte de uma carta para marcá-la como coletada; use +/- para registrar duplicatas.
 - Progresso geral, progresso por categoria e marcos de recompensa (10/20/30/40/50/60 cartas), espelhando os números oficiais do evento.
 - Compartilhe sua coleção via link (estado codificado na URL, sem servidor).
