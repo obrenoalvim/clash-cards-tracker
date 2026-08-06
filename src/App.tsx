@@ -33,6 +33,10 @@ import {
   Gem,
   ArrowRightLeft,
   Users,
+  Download,
+  Upload,
+  Star,
+  Package,
 } from "lucide-react";
 
 type Collection = Record<string, number>;
@@ -47,11 +51,29 @@ interface Account {
 
 type UndoAction =
   | { type: "reset"; accountId: string; collection: Collection }
-  | { type: "deleteAccount"; account: Account; index: number };
+  | { type: "deleteAccount"; account: Account; index: number }
+  | { type: "import"; accounts: Account[]; activeAccountId: string };
+
+function isValidAccountsShape(value: unknown): value is Account[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(
+      (a) =>
+        a &&
+        typeof a === "object" &&
+        typeof (a as Account).id === "string" &&
+        typeof (a as Account).name === "string" &&
+        typeof (a as Account).collection === "object" &&
+        (a as Account).collection !== null
+    )
+  );
+}
 
 const STORAGE_KEY = "coc-cards-collection";
 const ACCOUNTS_KEY = "coc-cards-accounts";
 const ACTIVE_ACCOUNT_KEY = "coc-cards-active-account";
+const MAIN_ACCOUNT_KEY = "coc-cards-main-account";
 const MAX_ACCOUNTS = 10;
 const ONBOARDED_KEY = "coc-cards-onboarded";
 const LANG_KEY = "coc-cards-lang";
@@ -117,6 +139,11 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [showShare, setShowShare] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [exported, setExported] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+  const [mainAccountId, setMainAccountId] = useState<string | null>(() => localStorage.getItem(MAIN_ACCOUNT_KEY));
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
@@ -164,6 +191,16 @@ export default function App() {
       localStorage.setItem(ACTIVE_ACCOUNT_KEY, activeAccountId);
     }
   }, [activeAccountId, isSharedView]);
+
+  useEffect(() => {
+    if (isSharedView) return;
+    if (mainAccountId && !accounts.some((a) => a.id === mainAccountId)) {
+      setMainAccountId(null);
+      return;
+    }
+    if (mainAccountId) localStorage.setItem(MAIN_ACCOUNT_KEY, mainAccountId);
+    else localStorage.removeItem(MAIN_ACCOUNT_KEY);
+  }, [accounts, mainAccountId, isSharedView]);
 
   useEffect(() => {
     if (!isSharedView && !localStorage.getItem(ONBOARDED_KEY)) {
@@ -215,13 +252,16 @@ export default function App() {
     if (undoAction.type === "reset") {
       const { accountId, collection: snapshot } = undoAction;
       setAccounts((prev) => prev.map((a) => (a.id === accountId ? { ...a, collection: snapshot } : a)));
-    } else {
+    } else if (undoAction.type === "deleteAccount") {
       const { account, index } = undoAction;
       setAccounts((prev) => {
         const next = [...prev];
         next.splice(index, 0, account);
         return next;
       });
+    } else {
+      setAccounts(undoAction.accounts);
+      setActiveAccountId(undoAction.activeAccountId);
     }
     setUndoAction(null);
     if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
@@ -236,6 +276,10 @@ export default function App() {
       return next;
     });
   }, [s.accountDefaultName]);
+
+  const toggleMainAccount = useCallback((id: string) => {
+    setMainAccountId((prev) => (prev === id ? null : id));
+  }, []);
 
   const renameAccount = useCallback((id: string, name: string) => {
     const trimmed = name.trim();
@@ -270,6 +314,35 @@ export default function App() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [shareUrl]);
+
+  const exportAccounts = useCallback(() => {
+    navigator.clipboard.writeText(JSON.stringify(accounts, null, 2));
+    setExported(true);
+    setTimeout(() => setExported(false), 2000);
+  }, [accounts]);
+
+  const importAccounts = useCallback(() => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(importText);
+    } catch {
+      setImportError(s.importInvalid);
+      return;
+    }
+    if (!isValidAccountsShape(parsed)) {
+      setImportError(s.importInvalid);
+      return;
+    }
+    const next = parsed.slice(0, MAX_ACCOUNTS);
+    setUndoAction({ type: "import", accounts, activeAccountId });
+    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = window.setTimeout(() => setUndoAction(null), 5000);
+    setAccounts(next);
+    setActiveAccountId(next[0].id);
+    setShowImport(false);
+    setImportText("");
+    setImportError(null);
+  }, [importText, accounts, activeAccountId, s.importInvalid]);
 
   const stats = useMemo(() => {
     const total = CARDS.length;
@@ -332,6 +405,35 @@ export default function App() {
     return { perCategory, total };
   }, [stats]);
 
+  const traderShop = useMemo(() => {
+    // Trader Shop only trades duplicates of the *same* card (2-for-1, or
+    // 3-for-1 for Super Troops) and never your last copy of that card.
+    const perCategory = {} as Record<CardCategory, number>;
+    let total = 0;
+    (Object.keys(CATEGORY_META) as CardCategory[]).forEach((cat) => (perCategory[cat] = 0));
+    CARDS.forEach((card) => {
+      const count = collection[card.id] || 0;
+      if (count <= 1) return;
+      const batchSize = card.category === "super-troop" ? 3 : 2;
+      const packs = Math.floor((count - 1) / batchSize);
+      perCategory[card.category] += packs;
+      total += packs;
+    });
+    return { perCategory, total };
+  }, [collection]);
+
+  const familyStats = useMemo(() => {
+    if (isSharedView || accounts.length < 2) return null;
+    const unionIds = new Set<string>();
+    accounts.forEach((a) =>
+      Object.keys(a.collection).forEach((id) => {
+        if (a.collection[id] > 0) unionIds.add(id);
+      })
+    );
+    const missing = CARDS.filter((c) => !unionIds.has(c.id));
+    return { total: CARDS.length, collected: unionIds.size, missing };
+  }, [accounts, isSharedView]);
+
   const tradeSuggestions = useMemo(() => {
     if (isSharedView || accounts.length < 2) return [];
     const result: { from: Account; to: Account; cards: Card[] }[] = [];
@@ -344,8 +446,13 @@ export default function App() {
         if (cards.length > 0) result.push({ from, to, cards });
       }
     }
+    result.sort((a, b) => {
+      const aToMain = a.to.id === mainAccountId ? 0 : 1;
+      const bToMain = b.to.id === mainAccountId ? 0 : 1;
+      return aToMain - bToMain;
+    });
     return result;
-  }, [accounts, isSharedView]);
+  }, [accounts, isSharedView, mainAccountId]);
 
   const categoryIcons: Record<CardCategory, React.ReactNode> = {
     elixir: <DropletIcon />,
@@ -403,6 +510,22 @@ export default function App() {
                     <span className="hidden sm:inline">{s.share}</span>
                   </button>
                   <button
+                    onClick={exportAccounts}
+                    title={s.exportHint}
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm font-semibold"
+                  >
+                    {exported ? <CheckCheck className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+                    <span className="hidden sm:inline">{exported ? s.copied : s.exportAll}</span>
+                  </button>
+                  <button
+                    onClick={() => setShowImport(!showImport)}
+                    title={s.importHint}
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm font-semibold"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span className="hidden sm:inline">{s.importAll}</span>
+                  </button>
+                  <button
                     onClick={resetCollection}
                     className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition text-sm font-semibold"
                   >
@@ -419,11 +542,13 @@ export default function App() {
             <AccountTabs
               accounts={accounts}
               activeId={activeAccountId}
+              mainId={mainAccountId}
               s={s}
               onSelect={setActiveAccountId}
               onAdd={addAccount}
               onRename={renameAccount}
               onDelete={deleteAccount}
+              onToggleMain={toggleMainAccount}
             />
           )}
 
@@ -443,6 +568,43 @@ export default function App() {
                 {copied ? <CheckCheck className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 {copied ? s.copied : s.copy}
               </button>
+            </div>
+          )}
+
+          {/* Import panel */}
+          {showImport && !isSharedView && (
+            <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
+              <p className="text-xs text-white/40 mb-2">{s.importHint}</p>
+              <textarea
+                value={importText}
+                onChange={(e) => {
+                  setImportText(e.target.value);
+                  setImportError(null);
+                }}
+                placeholder={s.importPlaceholder}
+                rows={4}
+                className="w-full p-2 rounded-md bg-black/30 border border-white/10 text-xs text-white/70 outline-none focus:border-white/30 transition font-mono resize-y"
+              />
+              {importError && <p className="text-xs text-red-400 mt-2">{importError}</p>}
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={importAccounts}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-sm font-semibold"
+                >
+                  <Upload className="w-4 h-4" />
+                  {s.importAll}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowImport(false);
+                    setImportText("");
+                    setImportError(null);
+                  }}
+                  className="px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-white/50 text-sm font-semibold"
+                >
+                  {s.importCancel}
+                </button>
+              </div>
             </div>
           )}
 
@@ -684,6 +846,41 @@ export default function App() {
           </div>
         </section>
 
+        {/* Trader Shop packs available */}
+        {!isSharedView && (
+          <section className="mb-8">
+            <div className="rounded-2xl bg-gradient-to-br from-amber-500/[0.08] to-transparent border border-amber-500/20 p-6">
+              <h3 className="text-sm font-bold text-amber-400 mb-1 flex items-center gap-2">
+                <Package className="w-4 h-4" /> {s.traderShopTitle}
+              </h3>
+              <p className="text-xs text-white/40 mb-4">{s.traderShopSubtitle}</p>
+              {traderShop.total === 0 ? (
+                <p className="text-sm text-white/40">{s.traderShopNone}</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {(Object.keys(CATEGORY_META) as CardCategory[]).map((cat) => {
+                    const meta = CATEGORY_META[cat];
+                    if (traderShop.perCategory[cat] === 0) return null;
+                    return (
+                      <div key={cat} className="rounded-xl p-3 border border-white/5 bg-white/[0.03]">
+                        <span className="text-xs font-bold flex items-center gap-1.5" style={{ color: meta.color }}>
+                          {categoryIcons[cat]}
+                          {lang === "pt" ? meta.shortPt : meta.short}
+                        </span>
+                        <div className="mt-1.5 text-lg font-black text-white">{traderShop.perCategory[cat]}</div>
+                      </div>
+                    );
+                  })}
+                  <div className="col-span-2 sm:col-span-4 flex items-center justify-between rounded-xl p-3 border border-amber-500/20 bg-amber-500/5 mt-1">
+                    <span className="text-sm font-bold text-white/80">{s.gemCostTotal}</span>
+                    <span className="text-xl font-black text-amber-300">{traderShop.total}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Gem cost to complete collection */}
         {!isSharedView && (
           <section className="mb-8">
@@ -727,6 +924,51 @@ export default function App() {
           </section>
         )}
 
+        {/* Family view: combined progress across all accounts */}
+        {familyStats && (
+          <section className="mb-8">
+            <div className="rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 p-6">
+              <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+                <h3 className="text-sm font-bold text-white/90 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-amber-400" /> {s.familyViewTitle}
+                </h3>
+                <span className="text-2xl font-black text-amber-400">
+                  {Math.round((familyStats.collected / familyStats.total) * 100)}%
+                </span>
+              </div>
+              <p className="text-xs text-white/40 mb-4">{s.familyViewSubtitle}</p>
+              <div className="relative h-3 rounded-full bg-white/5 overflow-hidden mb-4">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-amber-500 transition-all duration-700 ease-out"
+                  style={{ width: `${(familyStats.collected / familyStats.total) * 100}%` }}
+                />
+              </div>
+              <p className="text-xs text-white/50 mb-3">
+                {familyStats.collected} {s.cardsCollectedOf} {familyStats.total} {s.cardsCollectedSuffix}
+              </p>
+              {familyStats.missing.length === 0 ? (
+                <p className="text-sm text-green-400 flex items-center gap-1.5">
+                  <Check className="w-4 h-4" /> {s.familyViewNoneMissing}
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs text-white/40 mb-2">{s.familyViewMissingLabel}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {familyStats.missing.map((card) => (
+                      <span
+                        key={card.id}
+                        className="px-2 py-1 rounded-md bg-white/5 text-white/50 text-xs font-semibold"
+                      >
+                        {card.name}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Trade suggestions between accounts */}
         {tradeSuggestions.length > 0 && (
           <section className="mb-8">
@@ -736,25 +978,36 @@ export default function App() {
               </h3>
               <p className="text-xs text-white/40 mb-4">{s.tradeSuggestionsSubtitle}</p>
               <div className="space-y-3">
-                {tradeSuggestions.map(({ from, to, cards }) => (
-                  <div key={`${from.id}-${to.id}`} className="rounded-xl p-3 border border-white/5 bg-white/[0.03]">
-                    <div className="flex items-center gap-2 text-sm font-bold mb-2">
-                      <span className="text-white/90">{from.name}</span>
-                      <ArrowRightLeft className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span className="text-white/90">{to.name}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {cards.map((card) => (
-                        <span
-                          key={card.id}
-                          className="px-2 py-1 rounded-md bg-amber-500/10 text-amber-300 text-xs font-semibold"
-                        >
-                          {card.name}
+                {tradeSuggestions.map(({ from, to, cards }) => {
+                  const isForMain = to.id === mainAccountId;
+                  return (
+                    <div
+                      key={`${from.id}-${to.id}`}
+                      className={`rounded-xl p-3 border ${
+                        isForMain ? "border-amber-400/40 bg-amber-500/[0.06]" : "border-white/5 bg-white/[0.03]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 text-sm font-bold mb-2">
+                        <span className="text-white/90">{from.name}</span>
+                        <ArrowRightLeft className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span className="text-white/90 flex items-center gap-1">
+                          {to.name}
+                          {isForMain && <Star className="w-3 h-3 text-amber-400" fill="currentColor" />}
                         </span>
-                      ))}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {cards.map((card) => (
+                          <span
+                            key={card.id}
+                            className="px-2 py-1 rounded-md bg-amber-500/10 text-amber-300 text-xs font-semibold"
+                          >
+                            {card.name}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -797,7 +1050,11 @@ export default function App() {
       {undoAction && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 px-4 py-3 rounded-lg bg-[#1a1a24] border border-white/15 shadow-xl">
           <p className="text-sm text-white/80">
-            {undoAction.type === "reset" ? s.resetToast : s.accountDeletedToast}
+            {undoAction.type === "reset"
+              ? s.resetToast
+              : undoAction.type === "deleteAccount"
+              ? s.accountDeletedToast
+              : s.importedToast}
           </p>
           <button
             onClick={undoLastAction}
@@ -814,19 +1071,23 @@ export default function App() {
 function AccountTabs({
   accounts,
   activeId,
+  mainId,
   s,
   onSelect,
   onAdd,
   onRename,
   onDelete,
+  onToggleMain,
 }: {
   accounts: Account[];
   activeId: string;
+  mainId: string | null;
   s: Record<string, string>;
   onSelect: (id: string) => void;
   onAdd: () => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
+  onToggleMain: (id: string) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
@@ -847,10 +1108,22 @@ function AccountTabs({
       {accounts.map((account) => (
         <div
           key={account.id}
-          className={`group flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition ${
-            account.id === activeId ? "bg-white/15 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"
-          }`}
+          className={`group flex items-center gap-1 pl-2 pr-1.5 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition border ${
+            account.id === activeId
+              ? "bg-white/15 text-white border-transparent"
+              : "bg-white/5 text-white/50 hover:bg-white/10 border-transparent"
+          } ${account.id === mainId ? "border-amber-400/50" : ""}`}
         >
+          <button
+            onClick={() => onToggleMain(account.id)}
+            aria-label={s.markAsMain}
+            title={s.markAsMain}
+            className={`p-0.5 transition ${
+              account.id === mainId ? "text-amber-400" : "text-white/20 hover:text-amber-300"
+            }`}
+          >
+            <Star className="w-3.5 h-3.5" fill={account.id === mainId ? "currentColor" : "none"} />
+          </button>
           {editingId === account.id ? (
             <input
               autoFocus
