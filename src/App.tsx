@@ -5,6 +5,7 @@ import {
   RARITY_META,
   SET_REWARDS,
   REWARDS,
+  GEM_COST_PER_CARD,
   type Card,
   type CardCategory,
 } from "@/data/cards";
@@ -28,13 +29,30 @@ import {
   Zap,
   ExternalLink,
   Languages,
+  Plus,
+  Gem,
+  ArrowRightLeft,
+  Users,
 } from "lucide-react";
 
 type Collection = Record<string, number>;
 type FilterMode = "all" | "collected" | "missing";
 type CategoryFilter = "all" | CardCategory;
 
+interface Account {
+  id: string;
+  name: string;
+  collection: Collection;
+}
+
+type UndoAction =
+  | { type: "reset"; accountId: string; collection: Collection }
+  | { type: "deleteAccount"; account: Account; index: number };
+
 const STORAGE_KEY = "coc-cards-collection";
+const ACCOUNTS_KEY = "coc-cards-accounts";
+const ACTIVE_ACCOUNT_KEY = "coc-cards-active-account";
+const MAX_ACCOUNTS = 10;
 const ONBOARDED_KEY = "coc-cards-onboarded";
 const LANG_KEY = "coc-cards-lang";
 const EVENT_END = new Date(2026, 7, 31, 23, 59, 59); // August 31, 2026, end of day
@@ -44,17 +62,36 @@ function daysUntil(date: Date): number {
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 }
 
-function loadCollection(): Collection {
+function makeAccountId(): string {
+  return `acc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+// One-time migration: players who used the site before multi-account support
+// get their existing collection promoted to their first account.
+function loadAccounts(): Account[] {
   try {
-    const hash = window.location.hash;
-    if (hash.startsWith("#c=")) {
-      return decodeCollection(hash.slice(3));
+    const raw = localStorage.getItem(ACCOUNTS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
   } catch {
-    return {};
+    // fall through to migration
   }
+  const defaultName = localStorage.getItem(LANG_KEY) === "pt" ? "Conta 1" : "Account 1";
+  let legacyCollection: Collection = {};
+  try {
+    const legacyRaw = localStorage.getItem(STORAGE_KEY);
+    legacyCollection = legacyRaw ? JSON.parse(legacyRaw) : {};
+  } catch {
+    // ignore corrupt legacy data
+  }
+  return [{ id: "account-1", name: defaultName, collection: legacyCollection }];
+}
+
+function loadActiveAccountId(accounts: Account[]): string {
+  const saved = localStorage.getItem(ACTIVE_ACCOUNT_KEY);
+  return saved && accounts.some((a) => a.id === saved) ? saved : accounts[0].id;
 }
 
 function encodeCollection(col: Collection): string {
@@ -73,7 +110,8 @@ function decodeCollection(str: string): Collection {
 }
 
 export default function App() {
-  const [collection, setCollection] = useState<Collection>(() => loadCollection());
+  const [accounts, setAccounts] = useState<Account[]>(() => loadAccounts());
+  const [activeAccountId, setActiveAccountId] = useState<string>(() => loadActiveAccountId(loadAccounts()));
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
@@ -81,7 +119,7 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [undoCollection, setUndoCollection] = useState<Collection | null>(null);
+  const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
   const undoTimerRef = useRef<number | null>(null);
   const [lang, setLang] = useState<Lang>(() => {
     const saved = localStorage.getItem(LANG_KEY);
@@ -97,14 +135,35 @@ export default function App() {
     return window.location.hash.startsWith("#c=");
   }, []);
 
+  const sharedCollection = useMemo<Collection>(() => {
+    if (!isSharedView) return {};
+    try {
+      return decodeCollection(window.location.hash.slice(3));
+    } catch {
+      return {};
+    }
+  }, [isSharedView]);
+
   const daysLeft = daysUntil(EVENT_END);
   const eventEnded = Date.now() > EVENT_END.getTime();
 
+  const activeAccount = useMemo(
+    () => accounts.find((a) => a.id === activeAccountId) ?? accounts[0],
+    [accounts, activeAccountId]
+  );
+  const collection = isSharedView ? sharedCollection : activeAccount.collection;
+
   useEffect(() => {
     if (!isSharedView) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
+      localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
     }
-  }, [collection, isSharedView]);
+  }, [accounts, isSharedView]);
+
+  useEffect(() => {
+    if (!isSharedView) {
+      localStorage.setItem(ACTIVE_ACCOUNT_KEY, activeAccountId);
+    }
+  }, [activeAccountId, isSharedView]);
 
   useEffect(() => {
     if (!isSharedView && !localStorage.getItem(ONBOARDED_KEY)) {
@@ -117,41 +176,87 @@ export default function App() {
     localStorage.setItem(ONBOARDED_KEY, "1");
   }, []);
 
-  const setCardCount = useCallback((cardId: string, count: number) => {
+  const updateActiveCollection = useCallback((updater: (prev: Collection) => Collection) => {
     if (isSharedView) return;
-    setCollection((prev) => {
+    setAccounts((prev) =>
+      prev.map((a) => (a.id === activeAccountId ? { ...a, collection: updater(a.collection) } : a))
+    );
+  }, [isSharedView, activeAccountId]);
+
+  const setCardCount = useCallback((cardId: string, count: number) => {
+    updateActiveCollection((prev) => {
       const next = { ...prev };
       if (count <= 0) delete next[cardId];
       else next[cardId] = count;
       return next;
     });
-  }, [isSharedView]);
+  }, [updateActiveCollection]);
 
   const toggleCard = useCallback((cardId: string) => {
-    if (isSharedView) return;
-    setCollection((prev) => {
+    updateActiveCollection((prev) => {
       const next = { ...prev };
       const current = prev[cardId] || 0;
       if (current === 0) next[cardId] = 1;
       else delete next[cardId];
       return next;
     });
-  }, [isSharedView]);
+  }, [updateActiveCollection]);
 
   const resetCollection = useCallback(() => {
-    if (Object.keys(collection).length === 0) return;
-    setUndoCollection(collection);
-    setCollection({});
+    if (Object.keys(activeAccount.collection).length === 0) return;
+    setUndoAction({ type: "reset", accountId: activeAccount.id, collection: activeAccount.collection });
+    setAccounts((prev) => prev.map((a) => (a.id === activeAccount.id ? { ...a, collection: {} } : a)));
     if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
-    undoTimerRef.current = window.setTimeout(() => setUndoCollection(null), 5000);
-  }, [collection]);
+    undoTimerRef.current = window.setTimeout(() => setUndoAction(null), 5000);
+  }, [activeAccount]);
 
-  const undoResetCollection = useCallback(() => {
-    if (!undoCollection) return;
-    setCollection(undoCollection);
-    setUndoCollection(null);
+  const undoLastAction = useCallback(() => {
+    if (!undoAction) return;
+    if (undoAction.type === "reset") {
+      const { accountId, collection: snapshot } = undoAction;
+      setAccounts((prev) => prev.map((a) => (a.id === accountId ? { ...a, collection: snapshot } : a)));
+    } else {
+      const { account, index } = undoAction;
+      setAccounts((prev) => {
+        const next = [...prev];
+        next.splice(index, 0, account);
+        return next;
+      });
+    }
+    setUndoAction(null);
     if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
-  }, [undoCollection]);
+  }, [undoAction]);
+
+  const addAccount = useCallback(() => {
+    setAccounts((prev) => {
+      if (prev.length >= MAX_ACCOUNTS) return prev;
+      const id = makeAccountId();
+      const next = [...prev, { id, name: `${s.accountDefaultName} ${prev.length + 1}`, collection: {} }];
+      setActiveAccountId(id);
+      return next;
+    });
+  }, [s.accountDefaultName]);
+
+  const renameAccount = useCallback((id: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, name: trimmed } : a)));
+  }, []);
+
+  const deleteAccount = useCallback((id: string) => {
+    setAccounts((prev) => {
+      if (prev.length <= 1) return prev;
+      const index = prev.findIndex((a) => a.id === id);
+      if (index === -1) return prev;
+      const account = prev[index];
+      const next = prev.filter((a) => a.id !== id);
+      setUndoAction({ type: "deleteAccount", account, index });
+      if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = window.setTimeout(() => setUndoAction(null), 5000);
+      if (activeAccountId === id) setActiveAccountId(next[0].id);
+      return next;
+    });
+  }, [activeAccountId]);
 
   const shareUrl = useMemo(() => {
     const encoded = encodeCollection(collection);
@@ -214,6 +319,33 @@ export default function App() {
   const nextReward = useMemo(() => {
     return REWARDS.find((r) => stats.collected < r.count) || null;
   }, [stats.collected]);
+
+  const gemCost = useMemo(() => {
+    const perCategory = {} as Record<CardCategory, number>;
+    let total = 0;
+    (Object.keys(CATEGORY_META) as CardCategory[]).forEach((cat) => {
+      const missing = stats.byCategory[cat].total - stats.byCategory[cat].collected;
+      const cost = missing * GEM_COST_PER_CARD[cat];
+      perCategory[cat] = cost;
+      total += cost;
+    });
+    return { perCategory, total };
+  }, [stats]);
+
+  const tradeSuggestions = useMemo(() => {
+    if (isSharedView || accounts.length < 2) return [];
+    const result: { from: Account; to: Account; cards: Card[] }[] = [];
+    for (const from of accounts) {
+      for (const to of accounts) {
+        if (from.id === to.id) continue;
+        const cards = CARDS.filter(
+          (card) => (from.collection[card.id] || 0) >= 2 && (to.collection[card.id] || 0) === 0
+        );
+        if (cards.length > 0) result.push({ from, to, cards });
+      }
+    }
+    return result;
+  }, [accounts, isSharedView]);
 
   const categoryIcons: Record<CardCategory, React.ReactNode> = {
     elixir: <DropletIcon />,
@@ -281,6 +413,19 @@ export default function App() {
               )}
             </div>
           </div>
+
+          {/* Account tabs */}
+          {!isSharedView && (
+            <AccountTabs
+              accounts={accounts}
+              activeId={activeAccountId}
+              s={s}
+              onSelect={setActiveAccountId}
+              onAdd={addAccount}
+              onRename={renameAccount}
+              onDelete={deleteAccount}
+            />
+          )}
 
           {/* Share bar */}
           {showShare && !isSharedView && (
@@ -538,6 +683,82 @@ export default function App() {
             </div>
           </div>
         </section>
+
+        {/* Gem cost to complete collection */}
+        {!isSharedView && (
+          <section className="mb-8">
+            <div className="rounded-2xl bg-gradient-to-br from-cyan-500/[0.08] to-transparent border border-cyan-500/20 p-6">
+              <h3 className="text-sm font-bold text-cyan-400 mb-1 flex items-center gap-2">
+                <Gem className="w-4 h-4" /> {s.gemCostTitle}
+              </h3>
+              <p className="text-xs text-white/40 mb-4">{s.gemCostSubtitle}</p>
+              {gemCost.total === 0 ? (
+                <p className="text-sm text-green-400 flex items-center gap-1.5">
+                  <Check className="w-4 h-4" /> {s.gemCostComplete}
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {(Object.keys(CATEGORY_META) as CardCategory[]).map((cat) => {
+                    const meta = CATEGORY_META[cat];
+                    const missing = stats.byCategory[cat].total - stats.byCategory[cat].collected;
+                    return (
+                      <div key={cat} className="rounded-xl p-3 border border-white/5 bg-white/[0.03]">
+                        <span className="text-xs font-bold flex items-center gap-1.5" style={{ color: meta.color }}>
+                          {categoryIcons[cat]}
+                          {lang === "pt" ? meta.shortPt : meta.short}
+                        </span>
+                        <div className="mt-1.5 flex items-baseline gap-1">
+                          <span className="text-lg font-black text-white">{gemCost.perCategory[cat]}</span>
+                          <Gem className="w-3 h-3 text-cyan-400" />
+                        </div>
+                        <p className="text-[10px] text-white/40 mt-0.5">{missing} × {GEM_COST_PER_CARD[cat]}</p>
+                      </div>
+                    );
+                  })}
+                  <div className="col-span-2 sm:col-span-4 flex items-center justify-between rounded-xl p-3 border border-cyan-500/20 bg-cyan-500/5 mt-1">
+                    <span className="text-sm font-bold text-white/80">{s.gemCostTotal}</span>
+                    <span className="text-xl font-black text-cyan-300 flex items-center gap-1.5">
+                      {gemCost.total} <Gem className="w-4 h-4" />
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Trade suggestions between accounts */}
+        {tradeSuggestions.length > 0 && (
+          <section className="mb-8">
+            <div className="rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 p-6">
+              <h3 className="text-sm font-bold text-white/90 mb-1 flex items-center gap-2">
+                <ArrowRightLeft className="w-4 h-4 text-amber-400" /> {s.tradeSuggestionsTitle}
+              </h3>
+              <p className="text-xs text-white/40 mb-4">{s.tradeSuggestionsSubtitle}</p>
+              <div className="space-y-3">
+                {tradeSuggestions.map(({ from, to, cards }) => (
+                  <div key={`${from.id}-${to.id}`} className="rounded-xl p-3 border border-white/5 bg-white/[0.03]">
+                    <div className="flex items-center gap-2 text-sm font-bold mb-2">
+                      <span className="text-white/90">{from.name}</span>
+                      <ArrowRightLeft className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="text-white/90">{to.name}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {cards.map((card) => (
+                        <span
+                          key={card.id}
+                          className="px-2 py-1 rounded-md bg-amber-500/10 text-amber-300 text-xs font-semibold"
+                        >
+                          {card.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Footer */}
@@ -558,20 +779,118 @@ export default function App() {
             </a>
             {s.footerDisclaimer}
           </p>
+          <p className="text-xs text-white/40 mt-1">
+            {s.footerMadeBy} Breno Alvim ·{" "}
+            <a
+              href="https://github.com/obrenoalvim/clash-cards-tracker"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400/60 hover:text-cyan-400 transition underline-offset-2 hover:underline"
+            >
+              {s.footerSourceCode}
+            </a>
+          </p>
         </div>
       </footer>
 
       {/* Undo toast */}
-      {undoCollection && (
+      {undoAction && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 px-4 py-3 rounded-lg bg-[#1a1a24] border border-white/15 shadow-xl">
-          <p className="text-sm text-white/80">{s.resetToast}</p>
+          <p className="text-sm text-white/80">
+            {undoAction.type === "reset" ? s.resetToast : s.accountDeletedToast}
+          </p>
           <button
-            onClick={undoResetCollection}
+            onClick={undoLastAction}
             className="text-sm font-semibold text-amber-300 hover:text-amber-200 transition"
           >
             {s.undo}
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+function AccountTabs({
+  accounts,
+  activeId,
+  s,
+  onSelect,
+  onAdd,
+  onRename,
+  onDelete,
+}: {
+  accounts: Account[];
+  activeId: string;
+  s: Record<string, string>;
+  onSelect: (id: string) => void;
+  onAdd: () => void;
+  onRename: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState("");
+
+  const startEditing = (account: Account) => {
+    setEditingId(account.id);
+    setDraftName(account.name);
+  };
+
+  const commitEditing = () => {
+    if (editingId) onRename(editingId, draftName);
+    setEditingId(null);
+  };
+
+  return (
+    <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+      <Users className="w-4 h-4 text-white/30 shrink-0" />
+      {accounts.map((account) => (
+        <div
+          key={account.id}
+          className={`group flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition ${
+            account.id === activeId ? "bg-white/15 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"
+          }`}
+        >
+          {editingId === account.id ? (
+            <input
+              autoFocus
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              onBlur={commitEditing}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitEditing();
+                if (e.key === "Escape") setEditingId(null);
+              }}
+              className="bg-transparent border-b border-white/30 outline-none w-24 text-sm"
+            />
+          ) : (
+            <button
+              onClick={() => onSelect(account.id)}
+              onDoubleClick={() => startEditing(account)}
+              title={s.renameHint}
+            >
+              {account.name}
+            </button>
+          )}
+          {accounts.length > 1 && (
+            <button
+              onClick={() => onDelete(account.id)}
+              aria-label={s.deleteAccount}
+              className="opacity-0 group-hover:opacity-100 transition text-white/30 hover:text-red-400 p-0.5"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      ))}
+      {accounts.length < MAX_ACCOUNTS && (
+        <button
+          onClick={onAdd}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition whitespace-nowrap"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          {s.addAccount}
+        </button>
       )}
     </div>
   );

@@ -178,3 +178,12 @@ export const SET_REWARDS: Record<CardCategory, { name: string; namePt: string; e
   "builder-base": { name: "Rune of Gold", namePt: "Runa de Ouro", emoji: "🪙" },
   "super-troop": { name: "Legendary Chest", namePt: "Baú Lendário", emoji: "🧰" },
 };
+
+// Official gem price to complete a clan trade for a missing card, per card category.
+// Source: Clash of Clans Fandom wiki, "Clash of Cards" article, "Clan Chat Trades" section.
+export const GEM_COST_PER_CARD: Record<CardCategory, number> = {
+  elixir: 50,
+  "dark-elixir": 70,
+  "builder-base": 90,
+  "super-troop": 110,
+};
