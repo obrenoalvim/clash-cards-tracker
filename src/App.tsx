@@ -49,6 +49,14 @@ interface Account {
   collection: Collection;
 }
 
+interface PairSuggestion {
+  a: Account;
+  b: Account;
+  freeSwaps: { give: Card; take: Card }[];
+  aPaysFor: Card[];
+  bPaysFor: Card[];
+}
+
 type UndoAction =
   | { type: "reset"; accountId: string; collection: Collection }
   | { type: "deleteAccount"; account: Account; index: number }
@@ -436,20 +444,30 @@ export default function App() {
 
   const tradeSuggestions = useMemo(() => {
     if (isSharedView || accounts.length < 2) return [];
-    const result: { from: Account; to: Account; cards: Card[] }[] = [];
-    for (const from of accounts) {
-      for (const to of accounts) {
-        if (from.id === to.id) continue;
-        const cards = CARDS.filter(
-          (card) => (from.collection[card.id] || 0) >= 2 && (to.collection[card.id] || 0) === 0
-        );
-        if (cards.length > 0) result.push({ from, to, cards });
+    const result: PairSuggestion[] = [];
+    for (let i = 0; i < accounts.length; i++) {
+      for (let j = i + 1; j < accounts.length; j++) {
+        const a = accounts[i];
+        const b = accounts[j];
+        // A can offer these (duplicate for A, missing for B) — same for B->A.
+        const aToB = CARDS.filter((c) => (a.collection[c.id] || 0) >= 2 && (b.collection[c.id] || 0) === 0);
+        const bToA = CARDS.filter((c) => (b.collection[c.id] || 0) >= 2 && (a.collection[c.id] || 0) === 0);
+        // Clan trades are a barter: pair up as many mutual swaps as possible (free).
+        // Whatever's left over has nothing to trade back, so gems complete it instead.
+        const matched = Math.min(aToB.length, bToA.length);
+        const freeSwaps: { give: Card; take: Card }[] = [];
+        for (let k = 0; k < matched; k++) freeSwaps.push({ give: aToB[k], take: bToA[k] });
+        const bPaysFor = aToB.slice(matched); // B receives from A, B has nothing left to reciprocate
+        const aPaysFor = bToA.slice(matched); // A receives from B, A has nothing left to reciprocate
+        if (freeSwaps.length > 0 || aPaysFor.length > 0 || bPaysFor.length > 0) {
+          result.push({ a, b, freeSwaps, aPaysFor, bPaysFor });
+        }
       }
     }
-    result.sort((a, b) => {
-      const aToMain = a.to.id === mainAccountId ? 0 : 1;
-      const bToMain = b.to.id === mainAccountId ? 0 : 1;
-      return aToMain - bToMain;
+    result.sort((x, y) => {
+      const xMain = x.a.id === mainAccountId || x.b.id === mainAccountId ? 0 : 1;
+      const yMain = y.a.id === mainAccountId || y.b.id === mainAccountId ? 0 : 1;
+      return xMain - yMain;
     });
     return result;
   }, [accounts, isSharedView, mainAccountId]);
@@ -978,33 +996,85 @@ export default function App() {
               </h3>
               <p className="text-xs text-white/40 mb-4">{s.tradeSuggestionsSubtitle}</p>
               <div className="space-y-3">
-                {tradeSuggestions.map(({ from, to, cards }) => {
-                  const isForMain = to.id === mainAccountId;
+                {tradeSuggestions.map(({ a, b, freeSwaps, aPaysFor, bPaysFor }) => {
+                  const isForMain = a.id === mainAccountId || b.id === mainAccountId;
                   return (
                     <div
-                      key={`${from.id}-${to.id}`}
-                      className={`rounded-xl p-3 border ${
+                      key={`${a.id}-${b.id}`}
+                      className={`rounded-xl p-3 border space-y-3 ${
                         isForMain ? "border-amber-400/40 bg-amber-500/[0.06]" : "border-white/5 bg-white/[0.03]"
                       }`}
                     >
-                      <div className="flex items-center gap-2 text-sm font-bold mb-2">
-                        <span className="text-white/90">{from.name}</span>
-                        <ArrowRightLeft className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <div className="flex items-center gap-2 text-sm font-bold">
                         <span className="text-white/90 flex items-center gap-1">
-                          {to.name}
-                          {isForMain && <Star className="w-3 h-3 text-amber-400" fill="currentColor" />}
+                          {a.name}
+                          {a.id === mainAccountId && <Star className="w-3 h-3 text-amber-400" fill="currentColor" />}
+                        </span>
+                        <ArrowRightLeft className="w-3.5 h-3.5 text-white/30 shrink-0" />
+                        <span className="text-white/90 flex items-center gap-1">
+                          {b.name}
+                          {b.id === mainAccountId && <Star className="w-3 h-3 text-amber-400" fill="currentColor" />}
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {cards.map((card) => (
-                          <span
-                            key={card.id}
-                            className="px-2 py-1 rounded-md bg-amber-500/10 text-amber-300 text-xs font-semibold"
-                          >
-                            {card.name}
-                          </span>
-                        ))}
-                      </div>
+
+                      {freeSwaps.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-green-400 mb-1.5">
+                            {s.freeSwapsLabel}
+                          </p>
+                          <div className="flex flex-col gap-1">
+                            {freeSwaps.map((swap, i) => (
+                              <div key={i} className="flex flex-wrap items-center gap-1.5 text-xs">
+                                <span className="px-2 py-1 rounded-md bg-green-500/10 text-green-300 font-semibold">
+                                  {a.name}: {swap.give.name}
+                                </span>
+                                <ArrowRightLeft className="w-3 h-3 text-green-400/60 shrink-0" />
+                                <span className="px-2 py-1 rounded-md bg-green-500/10 text-green-300 font-semibold">
+                                  {b.name}: {swap.take.name}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {bPaysFor.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-amber-400 mb-1.5">
+                            {b.name} {s.paysGemsForLabel}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {bPaysFor.map((card) => (
+                              <span
+                                key={card.id}
+                                className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 text-amber-300 text-xs font-semibold"
+                              >
+                                {card.name}
+                                <Gem className="w-3 h-3" /> {GEM_COST_PER_CARD[card.category]}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {aPaysFor.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-amber-400 mb-1.5">
+                            {a.name} {s.paysGemsForLabel}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {aPaysFor.map((card) => (
+                              <span
+                                key={card.id}
+                                className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 text-amber-300 text-xs font-semibold"
+                              >
+                                {card.name}
+                                <Gem className="w-3 h-3" /> {GEM_COST_PER_CARD[card.category]}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
