@@ -449,16 +449,25 @@ export default function App() {
       for (let j = i + 1; j < accounts.length; j++) {
         const a = accounts[i];
         const b = accounts[j];
-        // A can offer these (duplicate for A, missing for B) — same for B->A.
-        const aToB = CARDS.filter((c) => (a.collection[c.id] || 0) >= 2 && (b.collection[c.id] || 0) === 0);
-        const bToA = CARDS.filter((c) => (b.collection[c.id] || 0) >= 2 && (a.collection[c.id] || 0) === 0);
-        // Clan trades are a barter: pair up as many mutual swaps as possible (free).
-        // Whatever's left over has nothing to trade back, so gems complete it instead.
-        const matched = Math.min(aToB.length, bToA.length);
+        // A clan trade requires offering a duplicate of the SAME category as the
+        // card requested (Fandom wiki: "Elixir Troop cards can only be used to
+        // request for other Elixir Troop cards") — so matching has to happen
+        // within each category, never across categories.
         const freeSwaps: { give: Card; take: Card }[] = [];
-        for (let k = 0; k < matched; k++) freeSwaps.push({ give: aToB[k], take: bToA[k] });
-        const bPaysFor = aToB.slice(matched); // B receives from A, B has nothing left to reciprocate
-        const aPaysFor = bToA.slice(matched); // A receives from B, A has nothing left to reciprocate
+        const aPaysFor: Card[] = [];
+        const bPaysFor: Card[] = [];
+        (Object.keys(CATEGORY_META) as CardCategory[]).forEach((cat) => {
+          const aToB = CARDS.filter(
+            (c) => c.category === cat && (a.collection[c.id] || 0) >= 2 && (b.collection[c.id] || 0) === 0
+          );
+          const bToA = CARDS.filter(
+            (c) => c.category === cat && (b.collection[c.id] || 0) >= 2 && (a.collection[c.id] || 0) === 0
+          );
+          const matched = Math.min(aToB.length, bToA.length);
+          for (let k = 0; k < matched; k++) freeSwaps.push({ give: aToB[k], take: bToA[k] });
+          bPaysFor.push(...aToB.slice(matched)); // B receives from A, nothing left in this category to reciprocate
+          aPaysFor.push(...bToA.slice(matched)); // A receives from B, nothing left in this category to reciprocate
+        });
         if (freeSwaps.length > 0 || aPaysFor.length > 0 || bPaysFor.length > 0) {
           result.push({ a, b, freeSwaps, aPaysFor, bPaysFor });
         }
