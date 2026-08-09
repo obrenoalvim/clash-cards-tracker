@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Clash of Clans Tracker — Clashiversary Card Collection Tracker</title>
+    <title>Clash of Clans Tracker — Multi-Account Clash of Cards Trade Tracker</title>
     <meta
       name="description"
-      content="Track your Clash of Clans 'Clash of Cards' collection for the August 2026 Clashiversary event. Search, filter, and mark the 60 Elixir, Dark Elixir, Builder Base, and Super Troop cards you own — saved locally, no account needed."
+      content="Track your Clash of Clans 'Clash of Cards' (aka 'House of Cards') collection across up to 10 accounts. See which trades are free vs. gem-paid, the exact gem cost to finish your set, and Trader Shop math — for the August 2026 Clashiversary event. Saved locally, no login."
     />
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#0a0a12" />
@@ -17,20 +17,23 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Clash of Clans Tracker" />
     <meta property="og:url" content="https://clash-cards-tracker.vercel.app/" />
-    <meta property="og:title" content="Clash of Clans Tracker — Clashiversary Card Collection Tracker" />
+    <meta property="og:title" content="Clash of Clans Tracker — Multi-Account Clash of Cards Trade Tracker" />
     <meta
       property="og:description"
-      content="Track your Clash of Clans 'Clash of Cards' collection for the August 2026 Clashiversary event. 60 cards, milestone rewards, and a shareable progress link."
+      content="Track Clash of Cards across multiple accounts. Free-vs-gem trade suggestions, a gem cost calculator, and Trader Shop math for the August 2026 Clashiversary event."
     />
-    <meta property="og:image" content="https://static.wikia.nocookie.net/clashofclans/images/0/0b/Avatar_Root_Rider.png/revision/latest?cb=20231213214829" />
+    <meta property="og:image" content="https://clash-cards-tracker.vercel.app/og-banner.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
 
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Clash of Clans Tracker — Clashiversary Card Collection Tracker" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Clash of Clans Tracker — Multi-Account Clash of Cards Trade Tracker" />
     <meta
       name="twitter:description"
-      content="Track your Clash of Clans 'Clash of Cards' collection for the August 2026 Clashiversary event."
+      content="Track Clash of Cards across multiple accounts. Free-vs-gem trade suggestions and a gem cost calculator for the August 2026 Clashiversary event."
     />
-    <meta name="twitter:image" content="https://static.wikia.nocookie.net/clashofclans/images/0/0b/Avatar_Root_Rider.png/revision/latest?cb=20231213214829" />
+    <meta name="twitter:image" content="https://clash-cards-tracker.vercel.app/og-banner.png" />
 
     <script type="application/ld+json">
       {
@@ -40,7 +43,16 @@
         "url": "https://clash-cards-tracker.vercel.app/",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Any (web browser)",
-        "description": "Track your Clash of Clans 'Clash of Cards' collection for the August 2026 Clashiversary event. Search, filter, and mark the 60 Elixir, Dark Elixir, Builder Base, and Super Troop cards you own.",
+        "description": "Track your Clash of Clans 'Clash of Cards' (aka 'House of Cards') collection across up to 10 accounts. Search, filter, and mark the 60 Elixir, Dark Elixir, Builder Base, and Super Troop cards you own, get free-vs-gem trade suggestions between accounts, and see the official gem cost to finish your set.",
+        "featureList": [
+          "Track all 60 Clash of Cards cards across Elixir, Dark Elixir, Builder Base, and Super Troop categories",
+          "Manage up to 10 accounts as tabs, with one markable as your main account",
+          "Trade suggestions between accounts, split into free swaps and gem-paid completions",
+          "Official gem cost calculator to finish your collection",
+          "Trader Shop duplicate exchange calculator",
+          "Shareable read-only collection link",
+          "English and Portuguese interface"
+        ],
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -53,6 +65,55 @@
           "url": "https://github.com/obrenoalvim"
         },
         "isAccessibleForFree": true
+      }
+    </script>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Can I track more than one Clash of Clans account?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Add up to 10 accounts as tabs, rename each one, and mark one as your main account."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is a card trade always free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. A trade is free only when both accounts hold a duplicate in the same card category. Otherwise, gems complete it — this app shows the exact price."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How much does it cost in gems to finish my collection?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "50 gems per missing Elixir card, 70 for Dark Elixir, 90 for Builder Base, 110 for Super Troop. Official Supercell prices, calculated live from your collection."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why can't I complete a trade right now?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Supercell's own event post confirms both clanmates need to be online at the same time to finish a trade. That's a known launch limitation, not a bug in this app."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does this app read my Clash of Clans account automatically?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. There's no public API for this event's data. You mark your cards by hand, and everything stays in your browser's local storage."
+            }
+          }
+        ]
       }
     </script>
   </head>

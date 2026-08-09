@@ -1,0 +1,40 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow1" cx="30%" cy="20%" r="60%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="85%" cy="80%" r="55%">
+      <stop offset="0%" stop-color="#00c2ff" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#00c2ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="#0a0a12"/>
+  <rect width="1200" height="630" fill="url(#glow1)"/>
+  <rect width="1200" height="630" fill="url(#glow2)"/>
+
+  <text x="80" y="180" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#f59e0b" letter-spacing="2">CLASH OF CARDS TRACKER</text>
+
+  <text x="80" y="270" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="900" fill="#ffffff">Clash of Clans Tracker</text>
+
+  <text x="80" y="330" font-family="Arial, Helvetica, sans-serif" font-size="30" fill="rgba(255,255,255,0.7)">Multi-account card &amp; trade tracker for the</text>
+  <text x="80" y="370" font-family="Arial, Helvetica, sans-serif" font-size="30" fill="rgba(255,255,255,0.7)">August 2026 Clashiversary event</text>
+
+  <!-- category chips -->
+  <g font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">
+    <rect x="80" y="430" width="190" height="56" rx="14" fill="rgba(224,40,126,0.12)" stroke="#e0287e" stroke-opacity="0.4"/>
+    <text x="105" y="465" fill="#e0287e">Elixir</text>
+
+    <rect x="290" y="430" width="230" height="56" rx="14" fill="rgba(139,43,226,0.12)" stroke="#8b2be2" stroke-opacity="0.4"/>
+    <text x="315" y="465" fill="#8b2be2">Dark Elixir</text>
+
+    <rect x="540" y="430" width="260" height="56" rx="14" fill="rgba(245,166,35,0.12)" stroke="#f5a623" stroke-opacity="0.4"/>
+    <text x="565" y="465" fill="#f5a623">Builder Base</text>
+
+    <rect x="820" y="430" width="230" height="56" rx="14" fill="rgba(0,194,255,0.12)" stroke="#00c2ff" stroke-opacity="0.4"/>
+    <text x="845" y="465" fill="#00c2ff">Super Troop</text>
+  </g>
+
+  <text x="80" y="560" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="rgba(255,255,255,0.45)">60 cards · free-vs-gem trade suggestions · gem cost calculator · EN/PT</text>
+</svg>

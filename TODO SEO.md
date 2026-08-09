@@ -1,24 +1,21 @@
 # TODO SEO
 
-> Last updated: 2026-08-04
+> Atualizado em: 2026-08-07
 
-## Done
-- ~~Canonical URL, `og:url`, and sitemap.xml~~ — applied against `https://clash-cards-tracker.vercel.app/` (`index.html`, `public/sitemap.xml`, `public/robots.txt`).
+## Feito
+- ~~URL canônica, `og:url` e sitemap.xml~~ — aplicado em `https://clash-cards-tracker.vercel.app/` (`index.html`, `public/sitemap.xml`, `public/robots.txt`).
+- ~~`<lastmod>` no sitemap.xml~~ — adicionado (2026-08-07). Atualize a data toda vez que o conteúdo da página mudar de verdade.
+- ~~Atualização do `llms.txt`~~ — reescrito pra descrever multi-conta, sugestões de troca por categoria, custo em gemas, Trader Shop e o apelido "House of Cards".
+- ~~Banner de Open Graph (1200×630)~~ — `public/og-banner.svg` desenhado no estilo do app e convertido pra `public/og-banner.png` via `resvg-cli` (sem virar dependência do projeto). `index.html` aponta pra ele, com `og:image:width/height/type` e `twitter:card` trocado pra `summary_large_image`.
+- ~~Meta description / OG / Twitter Card / JSON-LD~~ — reescritos pra citar multi-conta, troca grátis vs. gema, calculadora de gema e o apelido "House of Cards". `featureList` adicionado no JSON-LD `WebApplication`.
+- ~~FAQ visível + JSON-LD FAQPage~~ — seção nova em `src/App.tsx` (EN/PT via `i18n.ts`) com as 5 perguntas já levantadas. JSON-LD correspondente adicionado em `index.html`, texto em inglês pra bater com o HTML padrão da página. Os dois blocos JSON-LD (`WebApplication` e `FAQPage`) passaram em validação de sintaxe (`JSON.parse`).
 
-## Pending Changes
+## Pendente
 
-### Custom Open Graph banner (1200×630)
-- **Source:** [Open Graph protocol](https://ogp.me/), [web.dev — Open Graph images](https://web.dev/articles/opengraph)
-- **What:** Currently `og:image`/`twitter:image` point at a single troop icon (Root Rider, ~300×300, transparent background) pulled from the Fandom CDN as an interim fix — it works but isn't an ideal social-preview banner (wrong aspect ratio, no title text baked in).
-- **Where:** `index.html` (`og:image`, `twitter:image` meta tags).
-- **Why:** A proper 1200×630 banner with the app name/screenshot renders much better as a link preview card on X, Discord, WhatsApp, etc. — meaningfully improves click-through when the link is shared.
-- **Risk:** None — purely swapping an image URL. Needs actual image design/generation work, which is why it's queued rather than applied now.
-- **Effort:** Medium (needs a designed asset, e.g. a screenshot of the app composited with the title).
-
-### Verify rich-result eligibility once live
-- **Source:** [Google Rich Results Test](https://search.google.com/test/rich-results)
-- **What:** Run the deployed URL through Google's Rich Results Test and Facebook's Sharing Debugger to confirm the `WebApplication` JSON-LD (already added in `index.html`) and OG tags render as expected.
-- **Where:** N/A — external validation, no code change unless it surfaces an issue.
-- **Why:** JSON-LD and OG tags were authored by hand against spec, not validated against a live crawler — worth a real check post-deploy.
-- **Risk:** None, it's just a validation step.
-- **Effort:** Low.
+### Verificar rich results depois do deploy
+- **Fonte:** [Google Rich Results Test](https://search.google.com/test/rich-results)
+- **O que fazer:** Rodar a URL publicada no Rich Results Test do Google e no Sharing Debugger do Facebook. Confirmar que os dois JSON-LD (`WebApplication` e `FAQPage`) e as tags OG aparecem certo.
+- **Onde:** Nenhum arquivo. É validação externa e não dá pra automatizar sem API paga do Google — precisa abrir a ferramenta no navegador depois do deploy.
+- **Por quê:** JSON-LD e OG foram escritos e validados só como sintaxe, nunca testados contra um crawler de verdade.
+- **Risco:** Nenhum, é só checagem.
+- **Esforço:** Baixo.
