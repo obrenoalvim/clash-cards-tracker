@@ -53,8 +53,20 @@ interface PairSuggestion {
   a: Account;
   b: Account;
   freeSwaps: { give: Card; take: Card }[];
-  aPaysFor: Card[];
-  bPaysFor: Card[];
+}
+
+// Trader Shop only trades duplicates of the *same* card (2-for-1, or 3-for-1
+// for Super Troops) and never your last copy of that card.
+function computeTraderPacks(collection: Collection): Record<CardCategory, number> {
+  const perCategory = {} as Record<CardCategory, number>;
+  (Object.keys(CATEGORY_META) as CardCategory[]).forEach((cat) => (perCategory[cat] = 0));
+  CARDS.forEach((card) => {
+    const count = collection[card.id] || 0;
+    if (count <= 1) return;
+    const batchSize = card.category === "super-troop" ? 3 : 2;
+    perCategory[card.category] += Math.floor((count - 1) / batchSize);
+  });
+  return perCategory;
 }
 
 type UndoAction =
@@ -414,19 +426,8 @@ export default function App() {
   }, [stats]);
 
   const traderShop = useMemo(() => {
-    // Trader Shop only trades duplicates of the *same* card (2-for-1, or
-    // 3-for-1 for Super Troops) and never your last copy of that card.
-    const perCategory = {} as Record<CardCategory, number>;
-    let total = 0;
-    (Object.keys(CATEGORY_META) as CardCategory[]).forEach((cat) => (perCategory[cat] = 0));
-    CARDS.forEach((card) => {
-      const count = collection[card.id] || 0;
-      if (count <= 1) return;
-      const batchSize = card.category === "super-troop" ? 3 : 2;
-      const packs = Math.floor((count - 1) / batchSize);
-      perCategory[card.category] += packs;
-      total += packs;
-    });
+    const perCategory = computeTraderPacks(collection);
+    const total = Object.values(perCategory).reduce((sum, n) => sum + n, 0);
     return { perCategory, total };
   }, [collection]);
 
@@ -454,8 +455,6 @@ export default function App() {
         // request for other Elixir Troop cards") — so matching has to happen
         // within each category, never across categories.
         const freeSwaps: { give: Card; take: Card }[] = [];
-        const aPaysFor: Card[] = [];
-        const bPaysFor: Card[] = [];
         (Object.keys(CATEGORY_META) as CardCategory[]).forEach((cat) => {
           const aToB = CARDS.filter(
             (c) => c.category === cat && (a.collection[c.id] || 0) >= 2 && (b.collection[c.id] || 0) === 0
@@ -465,11 +464,9 @@ export default function App() {
           );
           const matched = Math.min(aToB.length, bToA.length);
           for (let k = 0; k < matched; k++) freeSwaps.push({ give: aToB[k], take: bToA[k] });
-          bPaysFor.push(...aToB.slice(matched)); // B receives from A, nothing left in this category to reciprocate
-          aPaysFor.push(...bToA.slice(matched)); // A receives from B, nothing left in this category to reciprocate
         });
-        if (freeSwaps.length > 0 || aPaysFor.length > 0 || bPaysFor.length > 0) {
-          result.push({ a, b, freeSwaps, aPaysFor, bPaysFor });
+        if (freeSwaps.length > 0) {
+          result.push({ a, b, freeSwaps });
         }
       }
     }
@@ -480,6 +477,32 @@ export default function App() {
     });
     return result;
   }, [accounts, isSharedView, mainAccountId]);
+
+  // A clan chat trade only ever works one way: request a card you have zero
+  // of, and hand over a duplicate (2+) of a different card in the same
+  // category that the other account is missing. There's no such thing as a
+  // one-way gift or "stock up on a card you already own" via clan chat, so
+  // the main account's priority plan reuses the exact same-category matches
+  // already computed in tradeSuggestions instead of inventing a looser rule.
+  const mainPriorityPlan = useMemo(() => {
+    if (!mainAccountId) return null;
+    const swaps: { give: Card; take: Card; other: Account }[] = [];
+
+    tradeSuggestions.forEach((pair) => {
+      const mainIsA = pair.a.id === mainAccountId;
+      const mainIsB = pair.b.id === mainAccountId;
+      if (!mainIsA && !mainIsB) return;
+      const other = mainIsA ? pair.b : pair.a;
+
+      pair.freeSwaps.forEach((swap) => {
+        swaps.push(mainIsA ? { give: swap.give, take: swap.take, other } : { give: swap.take, take: swap.give, other });
+      });
+    });
+
+    return { swaps };
+  }, [tradeSuggestions, mainAccountId]);
+
+  const mainAccountForPlan = mainAccountId ? accounts.find((a) => a.id === mainAccountId) ?? null : null;
 
   const categoryIcons: Record<CardCategory, React.ReactNode> = {
     elixir: <DropletIcon />,
@@ -505,8 +528,8 @@ export default function App() {
               </h1>
               <p className="text-xs text-white/50">
                 {eventEnded
-                  ? `${s.eventSubtitleActive} — ${s.eventEnded}`
-                  : `${s.eventSubtitleActive} — ${daysLeft} ${daysLeft === 1 ? s.dayLeft : s.daysLeft}`}
+                  ? `${s.eventSubtitleActive}, ${s.eventEnded}`
+                  : `${s.eventSubtitleActive}, ${daysLeft} ${daysLeft === 1 ? s.dayLeft : s.daysLeft}`}
               </p>
             </div>
 
@@ -873,6 +896,20 @@ export default function App() {
           </div>
         </section>
 
+        {/* How to get more cards */}
+        <section className="mb-8">
+          <div className="rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 p-6">
+            <h3 className="text-sm font-bold text-white/90 mb-1">{s.moreCardsTitle}</h3>
+            <p className="text-xs text-white/40 mb-4">{s.moreCardsSubtitle}</p>
+            <ul className="space-y-2 text-sm text-white/60">
+              <li>{s.moreCardsItem1}</li>
+              <li>{s.moreCardsItem2}</li>
+              <li>{s.moreCardsItem3}</li>
+              <li>{s.moreCardsItem4}</li>
+            </ul>
+          </div>
+        </section>
+
         {/* Trader Shop packs available */}
         {!isSharedView && (
           <section className="mb-8">
@@ -996,16 +1033,63 @@ export default function App() {
           </section>
         )}
 
+        {/* Priority plan to finish the main account first */}
+        {!isSharedView && accounts.length > 1 && (
+          <section className="mb-8">
+            <div className="rounded-2xl bg-gradient-to-br from-amber-500/[0.08] to-transparent border border-amber-400/25 p-6">
+              <h3 className="text-sm font-bold text-amber-300 mb-1 flex items-center gap-2">
+                <Star className="w-4 h-4" fill="currentColor" />
+                {s.mainPlanTitle}
+                {mainAccountForPlan && (
+                  <span className="text-white/50 font-semibold">{mainAccountForPlan.name}</span>
+                )}
+              </h3>
+              <p className="text-xs text-white/40 mb-4">{s.mainPlanSubtitle}</p>
+              {!mainPriorityPlan || !mainAccountForPlan ? (
+                <p className="text-sm text-white/40">{s.mainPlanNoMain}</p>
+              ) : mainPriorityPlan.swaps.length === 0 ? (
+                <p className="text-sm text-green-400 flex items-center gap-1.5">
+                  <Check className="w-4 h-4" /> {s.mainPlanAllSet}
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {mainPriorityPlan.swaps.map(({ give, take, other }, i) => (
+                    <TradeOfferCard
+                      key={`${give.id}-${take.id}-${i}`}
+                      s={s}
+                      requesting={take}
+                      offering={give}
+                      badge={
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[10px] font-semibold text-white/60">{other.name}</span>
+                          <span className="px-2 py-0.5 rounded-full bg-green-500/15 text-green-300 text-[10px] font-bold">
+                            {s.tradeFreeBadge}
+                          </span>
+                        </div>
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Trade suggestions between accounts */}
-        {tradeSuggestions.length > 0 && (
+        {tradeSuggestions.some((pair) => pair.freeSwaps.length > 0) && (
           <section className="mb-8">
             <div className="rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 p-6">
               <h3 className="text-sm font-bold text-white/90 mb-1 flex items-center gap-2">
                 <ArrowRightLeft className="w-4 h-4 text-amber-400" /> {s.tradeSuggestionsTitle}
               </h3>
-              <p className="text-xs text-white/40 mb-4">{s.tradeSuggestionsSubtitle}</p>
+              <p className="text-xs text-white/40 mb-1">{s.tradeSuggestionsSubtitle}</p>
+              <p className="text-xs text-cyan-300/70 mb-4 flex items-center gap-1.5">
+                <Package className="w-3.5 h-3.5 shrink-0" /> {s.traderAltHint}
+              </p>
               <div className="space-y-3">
-                {tradeSuggestions.map(({ a, b, freeSwaps, aPaysFor, bPaysFor }) => {
+                {tradeSuggestions
+                  .filter((pair) => pair.freeSwaps.length > 0)
+                  .map(({ a, b, freeSwaps }) => {
                   const isForMain = a.id === mainAccountId || b.id === mainAccountId;
                   return (
                     <div
@@ -1026,64 +1110,26 @@ export default function App() {
                         </span>
                       </div>
 
-                      {freeSwaps.length > 0 && (
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-green-400 mb-1.5">
-                            {s.freeSwapsLabel}
-                          </p>
-                          <div className="flex flex-col gap-1">
-                            {freeSwaps.map((swap, i) => (
-                              <div key={i} className="flex flex-wrap items-center gap-1.5 text-xs">
-                                <span className="px-2 py-1 rounded-md bg-green-500/10 text-green-300 font-semibold">
-                                  {a.name}: {swap.give.name}
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-green-400 mb-1.5">
+                          {s.freeSwapsLabel}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {freeSwaps.map((swap, i) => (
+                            <TradeOfferCard
+                              key={i}
+                              s={s}
+                              requesting={swap.take}
+                              offering={swap.give}
+                              badge={
+                                <span className="px-2 py-0.5 rounded-full bg-green-500/15 text-green-300 text-[10px] font-bold">
+                                  {s.tradeFreeBadge}
                                 </span>
-                                <ArrowRightLeft className="w-3 h-3 text-green-400/60 shrink-0" />
-                                <span className="px-2 py-1 rounded-md bg-green-500/10 text-green-300 font-semibold">
-                                  {b.name}: {swap.take.name}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
+                              }
+                            />
+                          ))}
                         </div>
-                      )}
-
-                      {bPaysFor.length > 0 && (
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-amber-400 mb-1.5">
-                            {b.name} {s.paysGemsForLabel}
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {bPaysFor.map((card) => (
-                              <span
-                                key={card.id}
-                                className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 text-amber-300 text-xs font-semibold"
-                              >
-                                {card.name}
-                                <Gem className="w-3 h-3" /> {GEM_COST_PER_CARD[card.category]}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {aPaysFor.length > 0 && (
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-amber-400 mb-1.5">
-                            {a.name} {s.paysGemsForLabel}
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {aPaysFor.map((card) => (
-                              <span
-                                key={card.id}
-                                className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 text-amber-300 text-xs font-semibold"
-                              >
-                                {card.name}
-                                <Gem className="w-3 h-3" /> {GEM_COST_PER_CARD[card.category]}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      </div>
                     </div>
                   );
                 })}
@@ -1091,6 +1137,21 @@ export default function App() {
             </div>
           </section>
         )}
+
+        {/* FAQ */}
+        <section className="mb-8">
+          <div className="rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 p-6">
+            <h3 className="text-sm font-bold text-white/90 mb-4">{s.faqTitle}</h3>
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <div key={n}>
+                  <p className="text-sm font-bold text-white/80 mb-1">{s[`faqQ${n}`]}</p>
+                  <p className="text-sm text-white/50">{s[`faqA${n}`]}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* Footer */}
@@ -1244,6 +1305,69 @@ function AccountTabs({
           {s.addAccount}
         </button>
       )}
+    </div>
+  );
+}
+
+// Mirrors the in-game Trade Offer card: a "Requesting" image on the left, an
+// "Offering" image on the right (omitted for gem-only entries), connected by
+// an arrow, with a badge for the price or partner on the right.
+function MiniCardImage({ card }: { card: Card }) {
+  const [imgError, setImgError] = useState(false);
+  const meta = CATEGORY_META[card.category];
+  const rarity = RARITY_META[card.rarity];
+  return (
+    <div
+      className="w-14 h-14 rounded-lg overflow-hidden flex items-center justify-center text-2xl shrink-0 border-2"
+      style={{
+        background: `radial-gradient(circle at center, ${meta.glow}, transparent 70%)`,
+        borderColor: rarity.color,
+      }}
+    >
+      {!imgError ? (
+        <img
+          src={card.imageUrl}
+          alt={card.name}
+          onError={() => setImgError(true)}
+          className="w-full h-full object-contain p-1"
+          loading="lazy"
+        />
+      ) : (
+        <span>{card.emoji}</span>
+      )}
+    </div>
+  );
+}
+
+function TradeOfferCard({
+  s,
+  requesting,
+  offering,
+  badge,
+}: {
+  s: Record<string, string>;
+  requesting: Card;
+  offering: Card | null;
+  badge: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+      <div className="flex flex-col items-center gap-1 w-16 shrink-0">
+        <span className="text-[9px] font-bold uppercase tracking-wide text-white/40">{s.requestingLabel}</span>
+        <MiniCardImage card={requesting} />
+        <span className="text-[10px] text-white/60 text-center leading-tight truncate w-full">{requesting.name}</span>
+      </div>
+      {offering && (
+        <>
+          <ArrowRightLeft className="w-4 h-4 text-green-400 shrink-0" />
+          <div className="flex flex-col items-center gap-1 w-16 shrink-0">
+            <span className="text-[9px] font-bold uppercase tracking-wide text-white/40">{s.offeringLabel}</span>
+            <MiniCardImage card={offering} />
+            <span className="text-[10px] text-white/60 text-center leading-tight truncate w-full">{offering.name}</span>
+          </div>
+        </>
+      )}
+      <div className="ml-auto shrink-0">{badge}</div>
     </div>
   );
 }
