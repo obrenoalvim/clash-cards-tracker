@@ -921,25 +921,30 @@ export default function App() {
               {traderShop.total === 0 ? (
                 <p className="text-sm text-white/40">{s.traderShopNone}</p>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {(Object.keys(CATEGORY_META) as CardCategory[]).map((cat) => {
-                    const meta = CATEGORY_META[cat];
-                    if (traderShop.perCategory[cat] === 0) return null;
-                    return (
-                      <div key={cat} className="rounded-xl p-3 border border-white/5 bg-white/[0.03]">
-                        <span className="text-xs font-bold flex items-center gap-1.5" style={{ color: meta.color }}>
-                          {categoryIcons[cat]}
-                          {lang === "pt" ? meta.shortPt : meta.short}
-                        </span>
-                        <div className="mt-1.5 text-lg font-black text-white">{traderShop.perCategory[cat]}</div>
-                      </div>
-                    );
-                  })}
-                  <div className="col-span-2 sm:col-span-4 flex items-center justify-between rounded-xl p-3 border border-amber-500/20 bg-amber-500/5 mt-1">
+                <>
+                  <div className="flex flex-wrap gap-3">
+                    {(Object.keys(CATEGORY_META) as CardCategory[]).map((cat) => {
+                      const meta = CATEGORY_META[cat];
+                      if (traderShop.perCategory[cat] === 0) return null;
+                      return (
+                        <div
+                          key={cat}
+                          className="flex-1 min-w-[120px] sm:flex-none sm:w-[140px] rounded-xl p-3 border border-white/5 bg-white/[0.03]"
+                        >
+                          <span className="text-xs font-bold flex items-center gap-1.5" style={{ color: meta.color }}>
+                            {categoryIcons[cat]}
+                            {lang === "pt" ? meta.shortPt : meta.short}
+                          </span>
+                          <div className="mt-1.5 text-lg font-black text-white">{traderShop.perCategory[cat]}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl p-3 border border-amber-500/20 bg-amber-500/5 mt-3">
                     <span className="text-sm font-bold text-white/80">{s.gemCostTotal}</span>
                     <span className="text-xl font-black text-amber-300">{traderShop.total}</span>
                   </div>
-                </div>
+                </>
               )}
             </div>
           </section>
