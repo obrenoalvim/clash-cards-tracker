@@ -922,20 +922,26 @@ export default function App() {
                 <p className="text-sm text-white/40">{s.traderShopNone}</p>
               ) : (
                 <>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {(Object.keys(CATEGORY_META) as CardCategory[]).map((cat) => {
                       const meta = CATEGORY_META[cat];
-                      if (traderShop.perCategory[cat] === 0) return null;
+                      const count = traderShop.perCategory[cat];
+                      const active = count > 0;
                       return (
                         <div
                           key={cat}
-                          className="flex-1 min-w-[120px] sm:flex-none sm:w-[140px] rounded-xl p-3 border border-white/5 bg-white/[0.03]"
+                          className={`rounded-xl p-3 border ${
+                            active ? "border-white/5 bg-white/[0.03]" : "border-white/5 bg-white/[0.015] opacity-40"
+                          }`}
                         >
-                          <span className="text-xs font-bold flex items-center gap-1.5" style={{ color: meta.color }}>
+                          <span
+                            className="text-xs font-bold flex items-center gap-1.5"
+                            style={{ color: active ? meta.color : undefined }}
+                          >
                             {categoryIcons[cat]}
                             {lang === "pt" ? meta.shortPt : meta.short}
                           </span>
-                          <div className="mt-1.5 text-lg font-black text-white">{traderShop.perCategory[cat]}</div>
+                          <div className="mt-1.5 text-lg font-black text-white">{count}</div>
                         </div>
                       );
                     })}
